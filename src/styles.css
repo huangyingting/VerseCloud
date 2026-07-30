@@ -72,7 +72,7 @@ a:focus-visible {
 }
 
 .maplibregl-canvas {
-  filter: sepia(0.08) saturate(0.82);
+  filter: none;
 }
 
 .maplibregl-ctrl-group {
@@ -148,146 +148,6 @@ a:focus-visible {
   border-left: 2px solid transparent;
 }
 
-.geographic-poem-marker {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: 7px;
-  min-width: 28px;
-  padding: 0 0 2px;
-  border: 0;
-  color: #f0dfb8;
-  background: transparent;
-  cursor: pointer;
-  filter: drop-shadow(0 3px 4px rgb(0 0 0 / 70%));
-  opacity: 0.82;
-  transition: opacity 200ms ease;
-  font-family: var(--fangsong);
-}
-
-.marker-stem {
-  position: relative;
-  width: 1px;
-  height: 25px;
-  background: linear-gradient(180deg, transparent, #c3aa70);
-}
-
-.marker-stem::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -5px;
-  width: 9px;
-  height: 9px;
-  border: 1px solid #f0dfbd;
-  border-radius: 50%;
-  background: #d8ba72;
-  box-shadow: 0 0 13px 3px rgb(223 190 112 / 62%);
-  transform: translateX(-50%);
-}
-
-.marker-place-label {
-  padding: 0 4px 15px;
-  color: #f3e5c5;
-  font-size: 15px;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 4px #06100c, 0 0 10px rgb(4 9 7 / 92%);
-  white-space: nowrap;
-  transition: color 160ms ease, transform 160ms ease;
-  opacity: 0;
-  transform: translateY(2px);
-}
-
-.marker-prominent .marker-place-label,
-.map-near .marker-place-label,
-.geographic-poem-marker.is-selected .marker-place-label {
-  opacity: 0.86;
-  transform: none;
-}
-
-.geographic-poem-marker.is-selected {
-  color: #fff5d8;
-  opacity: 1;
-}
-
-.geographic-poem-marker.is-selected .marker-stem {
-  height: 34px;
-  background: linear-gradient(180deg, transparent, #e6c273);
-}
-
-.geographic-poem-marker.is-selected .marker-stem::after {
-  width: 12px;
-  height: 12px;
-  bottom: -6px;
-  background: #e1bd6d;
-  box-shadow: 0 0 20px 6px rgb(225 189 109 / 68%);
-}
-
-.geographic-poem-marker.is-selected .marker-place-label {
-  color: #fff3d3;
-  font-size: 17px;
-  text-shadow: 0 1px 4px #06100c, 0 0 14px rgb(238 199 116 / 32%);
-}
-
-.geographic-poem-marker:hover .marker-place-label,
-.geographic-poem-marker:focus-visible .marker-place-label {
-  color: #fff3d3;
-  transform: translateY(-2px);
-}
-
-.historical-label {
-  padding: 2px 5px;
-  color: rgb(218 203 166 / 58%);
-  text-shadow: 0 1px 4px rgb(3 9 7 / 95%);
-  white-space: nowrap;
-  pointer-events: none;
-  transition: color 500ms ease, opacity 240ms ease;
-  font-family: var(--fangsong);
-}
-
-.historical-region-label {
-  border: 1px solid rgb(206 183 128 / 10%);
-  color: rgb(207 185 137 / 55%);
-  background: rgb(7 15 12 / 18%);
-  font-size: 12px;
-  letter-spacing: 0.18em;
-}
-
-.historical-prefecture-label {
-  color: rgb(229 217 187 / 72%);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  opacity: 0;
-}
-
-.historical-prefecture-label::before {
-  content: "";
-  display: inline-block;
-  width: 3px;
-  height: 3px;
-  margin-right: 5px;
-  border-radius: 50%;
-  background: #bda66e;
-  box-shadow: 0 0 5px rgb(207 178 110 / 58%);
-  vertical-align: middle;
-}
-
-.map-near .historical-region-label {
-  opacity: 0;
-}
-
-.map-near .historical-prefecture-label {
-  opacity: 0.76;
-}
-
-.map-intro-moving .historical-region-label {
-  opacity: 0.28;
-}
-
-.map-intro-moving .historical-prefecture-label {
-  opacity: 0;
-}
-
 .map-poem-sign {
   display: flex;
   flex-direction: row-reverse;
@@ -343,6 +203,20 @@ a:focus-visible {
   opacity: 0.92;
   mix-blend-mode: screen;
   pointer-events: none;
+}
+
+.map-moving .poem-effect {
+  opacity: 0;
+}
+
+.map-moving .poem-effect *,
+.map-moving .poem-effect *::before,
+.map-moving .poem-effect *::after {
+  animation-play-state: paused !important;
+}
+
+.map-moving .map-poem-sign {
+  opacity: 0;
 }
 
 .poem-effect .effect-core,
@@ -694,8 +568,8 @@ a:focus-visible {
 }
 
 .season-atmosphere {
-  opacity: 0.12;
-  mix-blend-mode: soft-light;
+  opacity: 0.08;
+  mix-blend-mode: normal;
   transition: background 700ms ease, opacity 700ms ease;
 }
 
@@ -722,8 +596,8 @@ a:focus-visible {
 }
 
 .paper-grain {
-  opacity: 0.23;
-  mix-blend-mode: soft-light;
+  opacity: 0.08;
+  mix-blend-mode: normal;
   background-image:
     radial-gradient(circle at 17% 28%, rgb(255 255 255 / 15%) 0 0.7px, transparent 0.9px),
     radial-gradient(circle at 71% 63%, rgb(255 255 255 / 13%) 0 0.55px, transparent 0.8px),
@@ -1122,7 +996,7 @@ a:focus-visible {
     repeating-linear-gradient(90deg, transparent 0 27px, rgb(215 190 139 / 2.5%) 28px),
     linear-gradient(135deg, rgb(46 52 41 / 94%), rgb(19 27 22 / 97%));
   box-shadow: -8px 28px 85px rgb(0 0 0 / 34%), inset 0 0 70px rgb(160 133 77 / 3%);
-  backdrop-filter: blur(17px) saturate(0.72);
+  backdrop-filter: none;
   isolation: isolate;
   transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -1719,16 +1593,6 @@ a:focus-visible {
     left: calc(50% - 110px);
     opacity: 0.38;
     scale: 0.72;
-  }
-  .historical-label:not(.historical-major) { display: none; }
-  .historical-region-label { font-size: 10px; opacity: 0.38; }
-  .map-near .historical-region-label { opacity: 0; }
-  .map-near .historical-prefecture-label { opacity: 0.62; }
-  .map-near .geographic-poem-marker:not(.is-selected) .marker-place-label {
-    opacity: 0;
-  }
-  .geographic-poem-marker.is-selected .marker-place-label {
-    font-size: 16px;
   }
   .verse-compass { left: 13px; bottom: 15px; }
   .maplibregl-ctrl-bottom-right { right: 8px; bottom: 51px; }

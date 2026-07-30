@@ -1,6 +1,6 @@
 # 诗云 · Verse Cloud
 
-一个可运行的诗词空间应用：在真实高程塑造的三维山河上游历中国古典诗词，并让长安、江南和西域三层程序化音景随地图中心自然交融。
+一个可运行的诗词空间应用：在 WebGL 唐代疆域与真实地形晕渲上游历中国古典诗词，并让长安、江南和西域三层程序化音景随地图中心自然交融。
 
 ## 本地运行
 
@@ -22,8 +22,8 @@ npm run build
 
 ## 当前版本
 
-- React、TypeScript、MapLibre GL 三维地形和 D3 音景空间投影。
-- Natural Earth 地表影像、OpenFreeMap / OpenStreetMap 水系，以及 Mapzen Terrain Tiles 真实高程。
+- React、TypeScript、MapLibre GL WebGL 地图和 D3 音景空间投影。
+- Natural Earth 真实地形晕渲，以及 OpenFreeMap / OpenStreetMap 水系。
 - 正式采用的 742 年唐代概念疆域，以半透明图层贴合真实山河，并放置 8 个诗词空间节点。
 - 朱雀仿宋自托管网页字体，以及从右向左的古籍式竖排诗卷。
 - 可俯仰、旋转、缩放的地图漫游，以及从全域山河自然落向诗词节点的入场镜头。
@@ -33,6 +33,9 @@ npm run build
 - 唐代概念道界、远景道名与近景州名，并对海域、湖泊和江河分别设色。
 - 春、夏、秋、冬四套手动场景配色；切换只更新已有地图图层，不运行全屏天气粒子。
 - 地图始终只渲染当前诗的两份意象动画，共 16 个轻量 CSS 粒子；移动端进一步减少历史地名数量。
+- 地图视野、瓦片请求和交互范围均限制在唐代疆域附近，疆域外由 WebGL 遮罩隐藏，不再呈现世界地图。
+- 道名和州名预先绘制为仿宋纹理并由 WebGL symbol 图层合批渲染；拖动期间暂停地图意象动画。
+- 默认采用高性能地形晕渲，不创建实时高程网格；画布像素比最高 1.5，并限制瓦片缓存。
 - 移动端“山河 / 诗卷”双模式，避免诗词面板长期遮挡真实地形。
 - 基于 Web Audio / Tone.js 的长安、江南、西域三路实时音景。
 - 诗词地点关系、证据说明和置信度字段。
@@ -47,7 +50,7 @@ npm run build
 ## 目录
 
 ```text
-src/components/VerseScene.tsx  MapLibre 三维地形、诗词节点、地图交互
+src/components/VerseScene.tsx  唐域 WebGL 图层、诗词节点与地图交互
 src/data/poems.ts              诗词及地理证据样本
 src/data/mapSnapshots.ts       年代快照与概念边界
 src/data/tangGeography.ts      唐代概念道界、道名与州名阅读层
@@ -68,7 +71,6 @@ tests/e2e/                     浏览器验收测试
 
 - 地表晕渲：Natural Earth，经 OpenFreeMap 提供。
 - 水系矢量瓦片：OpenFreeMap / OpenStreetMap contributors。
-- 高程：Mapzen Terrain Tiles；其公开数据来源包含 NASA、USGS 等机构。
 - 中文字体：朱雀仿宋（Zhuque Fangsong），按 SIL Open Font License 1.1 使用并随应用自托管。
 
-地图中的唐代边界是艺术化概念图层；真实高程不代表边界具有学术复原精度。
+地图中的唐代边界是艺术化概念图层；真实地形晕渲不代表边界具有学术复原精度。

@@ -17,8 +17,8 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-ready', 'true', {
     timeout: 15_000,
   })
-  await expect(page.locator('.geographic-poem-marker').first()).toBeVisible()
-  await expect(page.locator('.historical-region-label').first()).toBeVisible()
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-history-ready', 'true')
+  expect(await page.locator('.geographic-map .maplibregl-marker').count()).toBeLessThanOrEqual(2)
   await expect(page.locator('canvas')).toHaveCSS('height', '960px')
   await expect(page.getByRole('heading', { name: '春望' })).toBeVisible()
   await expect(page.locator('.poem-card-effect.effect-petals-embers')).toBeVisible()
@@ -51,7 +51,7 @@ test('keeps the WebGL scene alive on a narrow mobile viewport', async ({ page })
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-ready', 'true', {
     timeout: 15_000,
   })
-  await expect(page.locator('.geographic-poem-marker').first()).toBeVisible()
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-history-ready', 'true')
   await expect(page.locator('canvas')).toHaveCSS('height', '844px')
 
   await page.getByRole('button', { name: '诗卷', exact: true }).click()

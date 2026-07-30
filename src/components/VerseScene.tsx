@@ -10,7 +10,7 @@ import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
 import { activeSnapshot } from '../data/mapSnapshots'
-import { tangMapLabels, tangRegionDivisions, type HistoricalMapLabel } from '../data/tangGeography'
+import { tangMapLabels, tangRegionDivisions } from '../data/tangGeography'
 import { projectPoint } from '../lib/geo'
 import type { Poem, ScenePoint, Season } from '../types'
 
@@ -35,20 +35,13 @@ const geographicStyle: StyleSpecification = {
       tiles: ['https://tiles.openfreemap.org/natural_earth/ne2sr/{z}/{x}/{y}.png'],
       tileSize: 256,
       maxzoom: 6,
+      bounds: [69, 18, 129, 51],
       attribution: 'Natural Earth · OpenFreeMap',
     },
     openmaptiles: {
       type: 'vector',
       url: 'https://tiles.openfreemap.org/planet',
       attribution: '© OpenFreeMap · © OpenStreetMap contributors',
-    },
-    terrain: {
-      type: 'raster-dem',
-      tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      maxzoom: 15,
-      encoding: 'terrarium',
-      attribution: 'Terrain Tiles © Mapzen · elevation data sources include NASA and USGS',
     },
   },
   layers: [
@@ -68,18 +61,6 @@ const geographicStyle: StyleSpecification = {
         'raster-brightness-min': 0.04,
         'raster-brightness-max': 0.46,
         'raster-hue-rotate': 18,
-      },
-    },
-    {
-      id: 'terrain-hillshade',
-      type: 'hillshade',
-      source: 'terrain',
-      paint: {
-        'hillshade-shadow-color': '#040a07',
-        'hillshade-highlight-color': '#c1ad7e',
-        'hillshade-accent-color': '#45584d',
-        'hillshade-exaggeration': 0.66,
-        'hillshade-illumination-direction': 318,
       },
     },
     {
@@ -133,8 +114,6 @@ const seasonPalettes: Record<Season, {
   reliefHue: number
   reliefSaturation: number
   reliefBrightness: number
-  hillHighlight: string
-  hillAccent: string
   territory: string
   division: string
   ocean: string
@@ -144,22 +123,22 @@ const seasonPalettes: Record<Season, {
 }> = {
   spring: {
     background: '#0a1712', reliefHue: 12, reliefSaturation: -0.34, reliefBrightness: 0.5,
-    hillHighlight: '#c6b88a', hillAccent: '#536a58', territory: '#b89b66', division: '#c5af7d',
+    territory: '#b89b66', division: '#c5af7d',
     ocean: '#08232a', lake: '#14373b', river: '#2f6360', water: '#103137',
   },
   summer: {
     background: '#071711', reliefHue: 32, reliefSaturation: -0.2, reliefBrightness: 0.45,
-    hillHighlight: '#aebd83', hillAccent: '#3d6751', territory: '#9f9c5d', division: '#a9b77a',
+    territory: '#9f9c5d', division: '#a9b77a',
     ocean: '#06262c', lake: '#0d3b3d', river: '#326e67', water: '#0b3336',
   },
   autumn: {
     background: '#17140d', reliefHue: 338, reliefSaturation: -0.28, reliefBrightness: 0.48,
-    hillHighlight: '#c7a66f', hillAccent: '#71523b', territory: '#c08a4f', division: '#d0a46c',
+    territory: '#c08a4f', division: '#d0a46c',
     ocean: '#10242a', lake: '#29353a', river: '#657b73', water: '#1b3034',
   },
   winter: {
     background: '#0b1418', reliefHue: 188, reliefSaturation: -0.62, reliefBrightness: 0.56,
-    hillHighlight: '#c8d0c8', hillAccent: '#586b6c', territory: '#9ea9a0', division: '#b5c0b8',
+    territory: '#9ea9a0', division: '#b5c0b8',
     ocean: '#071d29', lake: '#17313d', river: '#6f9298', water: '#102936',
   },
 }
@@ -170,8 +149,6 @@ function applySeasonPalette(map: MapLibreMap, season: Season) {
   map.setPaintProperty('earth-relief', 'raster-hue-rotate', palette.reliefHue)
   map.setPaintProperty('earth-relief', 'raster-saturation', palette.reliefSaturation)
   map.setPaintProperty('earth-relief', 'raster-brightness-max', palette.reliefBrightness)
-  map.setPaintProperty('terrain-hillshade', 'hillshade-highlight-color', palette.hillHighlight)
-  map.setPaintProperty('terrain-hillshade', 'hillshade-accent-color', palette.hillAccent)
   map.setPaintProperty('water', 'fill-color', [
     'match',
     ['get', 'class'],
@@ -201,10 +178,119 @@ function boundaryFeature(): GeoJSON.Feature<GeoJSON.MultiPolygon> {
   }
 }
 
-function poemCollection(poems: Poem[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
+function outsideTangFeature(): GeoJSON.Feature<GeoJSON.Polygon> {
+  const boundaryRing = activeSnapshot.boundary?.[0]?.[0] ?? []
+  return {
+    type: 'Feature',
+    properties: { name: '唐代疆域外遮罩' },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [[-179, -80], [179, -80], [179, 80], [-179, 80], [-179, -80]],
+        boundaryRing,
+      ],
+    },
+  }
+}
+
+function historicalLabelCollection(): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: 'FeatureCollection',
-    features: poems.map((poem) => ({
+    features: tangMapLabels.map((label, index) => ({
+      type: 'Feature',
+      id: index,
+      properties: {
+        imageId: `tang-label-${index}`,
+        kind: label.kind,
+        major: Boolean(label.major),
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: [label.longitude, label.latitude],
+      },
+    })),
+  }
+}
+
+function createLabelImage(name: string, kind: 'region' | 'prefecture') {
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+  const fontSize = kind === 'region' ? 13 : 12
+  const letterSpacing = kind === 'region' ? 3 : 1.5
+  const paddingX = kind === 'region' ? 7 : 5
+  const dotWidth = kind === 'prefecture' ? 8 : 0
+  const measureCanvas = document.createElement('canvas')
+  const measure = measureCanvas.getContext('2d')
+  if (!measure) return null
+  measure.font = `${fontSize}px "Zhuque Fangsong (technical preview)", FangSong, serif`
+  const textWidth = measure.measureText(name).width + Math.max(0, name.length - 1) * letterSpacing
+  const width = Math.ceil(textWidth + paddingX * 2 + dotWidth)
+  const height = kind === 'region' ? 24 : 21
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.ceil(width * pixelRatio)
+  canvas.height = Math.ceil(height * pixelRatio)
+  const context = canvas.getContext('2d')
+  if (!context) return null
+  context.scale(pixelRatio, pixelRatio)
+  context.font = `${fontSize}px "Zhuque Fangsong (technical preview)", FangSong, serif`
+  context.textBaseline = 'middle'
+  context.shadowColor = 'rgba(2, 8, 6, 0.95)'
+  context.shadowBlur = 4
+
+  if (kind === 'region') {
+    context.fillStyle = 'rgba(7, 15, 12, 0.36)'
+    context.fillRect(0.5, 0.5, width - 1, height - 1)
+    context.strokeStyle = 'rgba(206, 183, 128, 0.18)'
+    context.strokeRect(0.5, 0.5, width - 1, height - 1)
+    context.fillStyle = 'rgba(218, 196, 147, 0.78)'
+  } else {
+    context.fillStyle = 'rgba(203, 174, 105, 0.9)'
+    context.beginPath()
+    context.arc(4, height / 2, 2, 0, Math.PI * 2)
+    context.fill()
+    context.fillStyle = 'rgba(238, 226, 197, 0.88)'
+  }
+
+  let x = paddingX + dotWidth
+  for (const character of name) {
+    context.fillText(character, x, height / 2 + 0.5)
+    x += context.measureText(character).width + letterSpacing
+  }
+  return { image: context.getImageData(0, 0, canvas.width, canvas.height), pixelRatio }
+}
+
+function createPoemLabelImage(name: string) {
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+  const fontSize = 15
+  const letterSpacing = 1
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+  if (!context) return null
+  context.font = `${fontSize}px "Zhuque Fangsong (technical preview)", FangSong, serif`
+  const textWidth = context.measureText(name).width + Math.max(0, name.length - 1) * letterSpacing
+  const width = Math.ceil(textWidth + 14)
+  const height = 28
+  canvas.width = Math.ceil(width * pixelRatio)
+  canvas.height = Math.ceil(height * pixelRatio)
+  const paint = canvas.getContext('2d')
+  if (!paint) return null
+  paint.scale(pixelRatio, pixelRatio)
+  paint.font = `${fontSize}px "Zhuque Fangsong (technical preview)", FangSong, serif`
+  paint.textBaseline = 'middle'
+  paint.fillStyle = '#f3e5c5'
+  paint.shadowColor = 'rgba(2, 8, 6, 0.98)'
+  paint.shadowBlur = 5
+  let x = 7
+  for (const character of name) {
+    paint.fillText(character, x, height / 2)
+    x += paint.measureText(character).width + letterSpacing
+  }
+  return { image: paint.getImageData(0, 0, canvas.width, canvas.height), pixelRatio }
+}
+
+function poemCollection(poems: Poem[], selectedPoemId?: string): GeoJSON.FeatureCollection<GeoJSON.Point> {
+  return {
+    type: 'FeatureCollection',
+    features: poems.map((poem, index) => ({
       type: 'Feature',
       id: poem.id,
       properties: {
@@ -213,6 +299,9 @@ function poemCollection(poems: Poem[]): GeoJSON.FeatureCollection<GeoJSON.Point>
         author: poem.author,
         placeName: poem.placeName,
         accent: poem.accent,
+        imageId: `poem-label-${index}`,
+        selected: poem.id === selectedPoemId,
+        priority: poem.id === selectedPoemId ? 0 : (index < 3 || poem.id === 'cui-hao-huanghelou' ? 1 : 2),
       },
       geometry: {
         type: 'Point',
@@ -222,7 +311,7 @@ function poemCollection(poems: Poem[]): GeoJSON.FeatureCollection<GeoJSON.Point>
   }
 }
 
-function addHistoricalLayers(map: MapLibreMap, poems: Poem[]) {
+function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: string) {
   map.addSource('tang-boundary', {
     type: 'geojson',
     data: boundaryFeature(),
@@ -234,6 +323,20 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[]) {
     paint: {
       'fill-color': '#b79b5f',
       'fill-opacity': 0.085,
+    },
+  })
+  map.addSource('outside-tang', {
+    type: 'geojson',
+    data: outsideTangFeature(),
+  })
+  map.addLayer({
+    id: 'outside-tang-mask',
+    type: 'fill',
+    source: 'outside-tang',
+    paint: {
+      'fill-color': '#07100c',
+      'fill-opacity': 0.94,
+      'fill-antialias': false,
     },
   })
   map.addLayer({
@@ -277,14 +380,19 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[]) {
 
   map.addSource('poems', {
     type: 'geojson',
-    data: poemCollection(poems),
+    data: poemCollection(poems, selectedPoemId),
   })
   map.addLayer({
     id: 'poem-halo',
     type: 'circle',
     source: 'poems',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 13, 7, 24],
+      'circle-radius': [
+        'case',
+        ['get', 'selected'],
+        ['interpolate', ['linear'], ['zoom'], 3, 18, 7, 29],
+        ['interpolate', ['linear'], ['zoom'], 3, 13, 7, 24],
+      ],
       'circle-color': '#d7ba76',
       'circle-opacity': 0.14,
       'circle-blur': 0.72,
@@ -296,51 +404,100 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[]) {
     type: 'circle',
     source: 'poems',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 5.5, 7, 10],
-      'circle-color': '#d6b971',
+      'circle-radius': [
+        'case',
+        ['get', 'selected'],
+        ['interpolate', ['linear'], ['zoom'], 3, 7.5, 7, 12],
+        ['interpolate', ['linear'], ['zoom'], 3, 5.5, 7, 10],
+      ],
+      'circle-color': ['case', ['get', 'selected'], '#e1bd6d', '#d6b971'],
       'circle-stroke-color': '#fff0c9',
       'circle-stroke-width': 1.2,
-      'circle-opacity': 0.82,
+      'circle-opacity': ['case', ['get', 'selected'], 1, 0.82],
       'circle-pitch-alignment': 'map',
     },
   })
 }
 
-function createHistoricalLabelMarker(label: HistoricalMapLabel) {
-  const element = document.createElement('span')
-  element.className = `historical-label historical-${label.kind}-label`
-  if (label.major) element.classList.add('historical-major')
-  element.textContent = label.name
-  element.setAttribute('aria-hidden', 'true')
-  return new Marker({ element, anchor: 'center' })
-    .setLngLat([label.longitude, label.latitude])
-}
+async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poems: Poem[]) {
+  await document.fonts.ready
+  try {
+    if (!map.getSource('tang-boundary')) return
+  } catch {
+    return
+  }
 
-function createPoemMarker(
-  poem: Poem,
-  prominent: boolean,
-  onSelect: (poem: Poem) => void,
-) {
-  const button = document.createElement('button')
-  button.type = 'button'
-  button.className = 'geographic-poem-marker'
-  button.dataset.poemId = poem.id
-  if (prominent) button.classList.add('marker-prominent')
-  button.setAttribute('aria-label', `查看${poem.author}《${poem.title}》`)
-  button.style.setProperty('--poem-accent', poem.accent)
-
-  const stem = document.createElement('span')
-  stem.className = 'marker-stem'
-  const label = document.createElement('span')
-  label.className = 'marker-place-label'
-  label.textContent = poem.placeName
-  button.append(stem, label)
-  button.addEventListener('click', (event) => {
-    event.stopPropagation()
-    onSelect(poem)
+  tangMapLabels.forEach((label, index) => {
+    const id = `tang-label-${index}`
+    if (map.hasImage(id)) return
+    const rendered = createLabelImage(label.name, label.kind)
+    if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
   })
-
-  return { button, marker: new Marker({ element: button, anchor: 'bottom' }) }
+  poems.forEach((poem, index) => {
+    const id = `poem-label-${index}`
+    if (map.hasImage(id)) return
+    const rendered = createPoemLabelImage(poem.placeName)
+    if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
+  })
+  map.addSource('tang-labels', {
+    type: 'geojson',
+    data: historicalLabelCollection(),
+  })
+  map.addLayer({
+    id: 'tang-region-labels',
+    type: 'symbol',
+    source: 'tang-labels',
+    maxzoom: 4.45,
+    filter: ['==', ['get', 'kind'], 'region'],
+    layout: {
+      'icon-image': ['get', 'imageId'],
+      'icon-allow-overlap': false,
+      'icon-padding': 5,
+      'icon-pitch-alignment': 'viewport',
+      'icon-rotation-alignment': 'viewport',
+    },
+    paint: {
+      'icon-opacity': ['case', ['get', 'major'], 0.9, 0.66],
+    },
+  })
+  map.addLayer({
+    id: 'tang-prefecture-labels',
+    type: 'symbol',
+    source: 'tang-labels',
+    minzoom: 4.25,
+    filter: ['==', ['get', 'kind'], 'prefecture'],
+    layout: {
+      'icon-image': ['get', 'imageId'],
+      'icon-allow-overlap': false,
+      'icon-padding': 4,
+      'icon-pitch-alignment': 'viewport',
+      'icon-rotation-alignment': 'viewport',
+    },
+    paint: {
+      'icon-opacity': ['case', ['get', 'major'], 0.92, 0.72],
+    },
+  })
+  map.addLayer({
+    id: 'poem-place-labels',
+    type: 'symbol',
+    source: 'poems',
+    minzoom: 3.3,
+    layout: {
+      'icon-image': ['get', 'imageId'],
+      'icon-size': ['case', ['get', 'selected'], 1.14, 1],
+      'icon-anchor': 'bottom',
+      'icon-offset': [0, -9],
+      'icon-allow-overlap': false,
+      'icon-padding': 3,
+      'icon-pitch-alignment': 'viewport',
+      'icon-rotation-alignment': 'viewport',
+      'symbol-sort-key': ['get', 'priority'],
+    },
+    paint: {
+      'icon-opacity': ['case', ['get', 'selected'], 1, 0.88],
+    },
+  })
+  container.setAttribute('data-history-ready', 'true')
 }
 
 function createVerticalVerseMarker(poem: Poem) {
@@ -384,7 +541,7 @@ function focusSelectedPoem(map: MapLibreMap, poem: Poem) {
   map.easeTo({
     center: [poem.longitude, poem.latitude],
     zoom: compact ? 4.55 : 4.7,
-    pitch: compact ? 54 : 60,
+    pitch: compact ? 42 : 48,
     bearing: -8,
     offset: compact ? [0, -145] : [horizontalOffset, 8],
     duration: reducedMotion ? 0 : 1_450,
@@ -436,16 +593,26 @@ export function VerseScene({
     const map = new MapLibreMap({
       container: containerRef.current,
       style: geographicStyle,
-      center: compact ? [101, 36.5] : [98, 37],
-      zoom: compact ? 2.9 : 3.05,
-      pitch: compact ? 40 : 42,
+      center: compact ? [104, 34] : [101, 34],
+      zoom: compact ? 3.55 : 4.2,
+      pitch: compact ? 34 : 38,
       bearing: -8,
-      maxPitch: 78,
-      minZoom: 2.4,
+      maxBounds: [[68, 16], [131, 53]],
+      maxPitch: 62,
+      minZoom: compact ? 3.3 : 4,
       maxZoom: 8,
+      renderWorldCopies: false,
+      maxTileCacheSize: compact ? 24 : 48,
+      cancelPendingTileRequestsWhileZooming: true,
+      refreshExpiredTiles: false,
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
       attributionControl: false,
       fadeDuration: 0,
-      canvasContextAttributes: { antialias: true },
+      canvasContextAttributes: {
+        antialias: false,
+        powerPreference: 'high-performance',
+        desynchronized: true,
+      },
     })
     mapRef.current = map
     introInProgressRef.current = true
@@ -463,66 +630,47 @@ export function VerseScene({
         ?.removeAttribute('open')
     })
 
-    const markers: Marker[] = []
-    const markerElements = new Map<string, HTMLButtonElement>()
     const compass = document.createElement('button')
     compass.type = 'button'
     compass.className = 'verse-compass'
     compass.setAttribute('aria-label', '归正地图方向')
     compass.innerHTML = '<span>南</span><i></i>'
     compass.addEventListener('click', () => {
-      map.easeTo({ bearing: 0, pitch: compact ? 48 : 55, duration: 900 })
+      map.easeTo({ bearing: 0, pitch: compact ? 38 : 44, duration: 700 })
     })
     containerRef.current.append(compass)
     let focusFrame = 0
+    let lastFocusReport = 0
     const updateMarkerDensity = () => {
       containerRef.current?.classList.toggle('map-near', map.getZoom() >= 4.25)
     }
-    const markSelected = (poemId: string) => {
-      markerElements.forEach((element, id) => {
-        element.classList.toggle('is-selected', id === poemId)
-      })
-    }
-    const reportFocus = () => {
+    const reportFocus = (force = false) => {
+      const now = performance.now()
+      if (!force && now - lastFocusReport < 120) return
       if (focusFrame) return
       focusFrame = window.requestAnimationFrame(() => {
         const center = map.getCenter()
         onFocusRef.current(projectPoint(center.lng, center.lat))
+        lastFocusReport = performance.now()
         focusFrame = 0
       })
     }
 
     map.once('style.load', () => {
-      map.setTerrain({ source: 'terrain', exaggeration: compact ? 1.25 : 1.5 })
-      addHistoricalLayers(map, poems)
+      addHistoricalLayers(map, poems, selectedPoemRef.current.id)
       applySeasonPalette(map, seasonRef.current)
-      tangMapLabels.forEach((label) => {
-        const marker = createHistoricalLabelMarker(label).addTo(map)
-        markers.push(marker)
-      })
-      poems.forEach((poem, index) => {
-        const prominent = index === 0 || index === 1 || index === 2 || poem.id === 'cui-hao-huanghelou'
-        const { button, marker } = createPoemMarker(
-          poem,
-          prominent,
-          (nextPoem) => onSelectRef.current(nextPoem),
-        )
-        marker.setLngLat([poem.longitude, poem.latitude]).addTo(map)
-        markers.push(marker)
-        markerElements.set(poem.id, button)
-      })
-      markSelected(selectedPoemRef.current.id)
+      if (containerRef.current) void addWebglLabelLayers(map, containerRef.current, poems)
       updateMarkerDensity()
       containerRef.current?.setAttribute('data-map-ready', 'true')
       reportFocus()
       window.requestAnimationFrame(() => {
         containerRef.current?.classList.add('map-intro-moving')
         map.easeTo({
-          center: compact ? [108.4, 32.8] : [104.8, 34.6],
-          zoom: compact ? 3.35 : 3.72,
-          pitch: compact ? 53 : 60,
-          bearing: -14,
-          duration: 3_600,
+          center: compact ? [105.5, 33.2] : [101.5, 34.2],
+          zoom: compact ? 3.72 : 4.45,
+          pitch: compact ? 42 : 46,
+          bearing: -10,
+          duration: 2_400,
           easing: (time) => 1 - Math.pow(1 - time, 3),
         })
         map.once('moveend', () => {
@@ -534,12 +682,29 @@ export function VerseScene({
         })
       })
     })
-    map.on('move', reportFocus)
+    map.on('click', (event) => {
+      const layers = ['poem-points']
+      if (map.getLayer('poem-place-labels')) layers.push('poem-place-labels')
+      const feature = map.queryRenderedFeatures(event.point, { layers })[0]
+      const poem = poems.find((item) => item.id === feature?.properties?.id)
+      if (poem) onSelectRef.current(poem)
+    })
+    map.on('mouseenter', 'poem-points', () => {
+      map.getCanvas().style.cursor = 'pointer'
+    })
+    map.on('mouseleave', 'poem-points', () => {
+      map.getCanvas().style.cursor = ''
+    })
+    map.on('movestart', () => containerRef.current?.classList.add('map-moving'))
+    map.on('move', () => reportFocus())
+    map.on('moveend', () => {
+      containerRef.current?.classList.remove('map-moving')
+      reportFocus(true)
+    })
     map.on('zoom', updateMarkerDensity)
 
     return () => {
       if (focusFrame) window.cancelAnimationFrame(focusFrame)
-      markers.forEach((marker) => marker.remove())
       compass.remove()
       selectedMarkerRef.current?.remove()
       effectMarkerRef.current?.remove()
@@ -566,12 +731,7 @@ export function VerseScene({
       .addTo(map)
 
     const source = map.getSource('poems') as GeoJSONSource | undefined
-    if (source) source.setData(poemCollection(poems))
-    containerRef.current
-      ?.querySelectorAll<HTMLButtonElement>('.geographic-poem-marker')
-      .forEach((element) => {
-        element.classList.toggle('is-selected', element.dataset.poemId === selectedPoem.id)
-      })
+    if (source) source.setData(poemCollection(poems, selectedPoem.id))
 
     if (!selectionInitializedRef.current) {
       selectionInitializedRef.current = true
@@ -584,5 +744,5 @@ export function VerseScene({
     focusSelectedPoem(map, selectedPoem)
   }, [poems, selectedPoem])
 
-  return <div ref={containerRef} className="geographic-map" aria-label="三维唐代概念地形地图" />
+  return <div ref={containerRef} className="geographic-map" aria-label="唐代疆域 WebGL 地形地图" />
 }

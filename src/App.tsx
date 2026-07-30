@@ -35,7 +35,7 @@ export function App() {
   const [mix, setMix] = useState<SoundscapeMix>(() =>
     computeSoundscapeMix(initialFocus),
   )
-  const [focusPoint, setFocusPoint] = useState<ScenePoint>(initialFocus)
+  const focusPoint = useRef<ScenePoint>(initialFocus)
   const engine = useRef<SoundscapeEngine | null>(null)
   const introTimer = useRef<number | null>(null)
 
@@ -53,7 +53,7 @@ export function App() {
     }
     if (!engine.current) engine.current = new SoundscapeEngine()
     try {
-      await engine.current.start(focusPoint)
+      await engine.current.start(focusPoint.current)
       setSoundEnabled(true)
     } catch (error) {
       console.warn('Soundscape could not start; continuing silently.', error)
@@ -62,9 +62,16 @@ export function App() {
   }
 
   const handleFocusChange = useCallback((point: ScenePoint) => {
-    setFocusPoint(point)
+    focusPoint.current = point
     const nextMix = engine.current?.update(point) ?? computeSoundscapeMix(point)
-    setMix(nextMix)
+    setMix((currentMix) => {
+      const materiallyChanged =
+        currentMix.dominant !== nextMix.dominant
+        || Math.abs(currentMix.changan - nextMix.changan) > 0.025
+        || Math.abs(currentMix.jiangnan - nextMix.jiangnan) > 0.025
+        || Math.abs(currentMix.frontier - nextMix.frontier) > 0.025
+      return materiallyChanged ? nextMix : currentMix
+    })
   }, [])
 
   const selectPoem = useCallback((poem: Poem) => {
@@ -173,7 +180,7 @@ export function App() {
         <span><i className="legend-dot poem" />诗词地点</span>
         <span><i className="legend-water sea" />海域 · 湖泊 · 江河分色</span>
         <span><i className="legend-line division" />唐代概念道界</span>
-        <span><i className="legend-relief" />真实高程</span>
+        <span><i className="legend-relief" />真实地形晕渲</span>
         <span><i className="legend-area" />概念疆域</span>
       </section>
 
@@ -313,7 +320,7 @@ export function App() {
       )}
 
       <footer className="release-note">
-        <span>山河卷 0.6</span>
+        <span>山河卷 0.7</span>
         <p>{activeSnapshot.note}</p>
       </footer>
 
