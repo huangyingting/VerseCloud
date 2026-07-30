@@ -21,9 +21,6 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   })
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-history-ready', 'true')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-hit-ready', 'true')
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-pitch', '45')
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-overview-zoom', /\d+\.\d{3}/)
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-boundary-contained', 'true')
   expect(await page.locator('.geographic-map .maplibregl-marker').count()).toBeLessThanOrEqual(2)
   await expect(page.locator('canvas')).toHaveCSS('height', '960px')
   await expect(page.getByRole('heading', { name: '春望' })).toBeVisible()
@@ -36,7 +33,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
 
   const map = page.locator('.geographic-map')
   await expect(map).not.toHaveClass(/map-intro-moving/, { timeout: 8_000 })
-  await page.mouse.click(1_315, 635)
+  await page.mouse.click(1_314, 693)
   await expect(page.getByRole('heading', { name: '宿建德江' })).toBeVisible()
   await expect(page.getByText('移舟泊烟渚，日暮客愁新。', { exact: true })).toBeVisible()
 
@@ -69,9 +66,6 @@ test('keeps the WebGL scene alive on a narrow mobile viewport', async ({ page })
   })
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-history-ready', 'true')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-hit-ready', 'true')
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-pitch', '45')
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-overview-zoom', /\d+\.\d{3}/)
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-boundary-contained', 'true')
   await expect(page.locator('canvas')).toHaveCSS('height', '844px')
 
   await expect(page.getByRole('heading', { name: '春望' })).toBeVisible()

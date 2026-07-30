@@ -1640,10 +1640,6 @@ a:focus-visible {
   .map-poem-lines { gap: 5px; padding-right: 5px; }
   .map-poem-lines p { font-size: 12px; line-height: 1.32; letter-spacing: 0.02em; }
   .map-poem-sign footer { padding-right: 5px; font-size: 8px; }
-  .geographic-map:not(.map-near) .map-poem-sign {
-    scale: 0.74;
-    transform-origin: bottom center;
-  }
   .poem-effect { scale: 0.82; }
   .verse-compass { left: 13px; bottom: 15px; }
   .maplibregl-ctrl-bottom-right { right: 8px; bottom: 51px; }
