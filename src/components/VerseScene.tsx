@@ -3,9 +3,11 @@ import {
   Map as MapLibreMap,
   Marker,
   NavigationControl,
+  setWorkerUrl,
   type GeoJSONSource,
   type StyleSpecification,
 } from 'maplibre-gl'
+import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
 import { activeSnapshot } from '../data/mapSnapshots'
@@ -18,6 +20,10 @@ interface VerseSceneProps {
   onSelectPoem: (poem: Poem) => void
   onFocusChange: (point: ScenePoint) => void
 }
+
+// Vite does not discover MapLibre's import.meta.url worker when the library is
+// loaded lazily. Importing it as an asset makes the production URL explicit.
+setWorkerUrl(mapWorkerUrl)
 
 const geographicStyle: StyleSpecification = {
   version: 8,
