@@ -2,7 +2,11 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: true,
+  timeout: 60_000,
+  // Chromium software WebGL is memory-heavy; serialize the two visual checks
+  // so CI validates rendering without competing GPU contexts.
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: 'line',

@@ -22,8 +22,9 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.getByRole('heading', { name: '春望' })).toBeVisible()
   await expect(page.getByRole('button', { name: '静音' })).toBeEnabled()
 
-  await page.getByRole('button', { name: '下一首' }).click()
+  await page.getByRole('button', { name: '后卷' }).click()
   await expect(page.getByRole('heading', { name: '早发白帝城' })).toBeVisible()
+  await page.getByText('考据', { exact: true }).click()
   await expect(page.getByText('行旅节点', { exact: true })).toBeVisible()
   expect(runtimeErrors).toEqual([])
 })
@@ -44,6 +45,7 @@ test('keeps the WebGL scene alive on a narrow mobile viewport', async ({ page })
   await expect(page.locator('.geographic-poem-marker').first()).toBeVisible()
   await expect(page.locator('canvas')).toHaveCSS('height', '844px')
 
+  await page.getByRole('button', { name: '诗卷', exact: true }).click()
   await expect(page.getByRole('heading', { name: '春望' })).toBeVisible()
   expect(contextLosses).toEqual([])
 })

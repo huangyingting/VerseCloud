@@ -23,12 +23,14 @@ export function App() {
   const [entered, setEntered] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(false)
   const [muted, setMuted] = useState(false)
-  const [detailsOpen, setDetailsOpen] = useState(true)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [mobileView, setMobileView] = useState<'landscape' | 'poem'>('landscape')
   const [mix, setMix] = useState<SoundscapeMix>(() =>
     computeSoundscapeMix(initialFocus),
   )
   const [focusPoint, setFocusPoint] = useState<ScenePoint>(initialFocus)
   const engine = useRef<SoundscapeEngine | null>(null)
+  const introTimer = useRef<number | null>(null)
 
   const selectedIndex = useMemo(
     () => poems.findIndex((poem) => poem.id === selectedPoem.id),
@@ -37,6 +39,11 @@ export function App() {
 
   const startExperience = async () => {
     setEntered(true)
+    setDetailsOpen(false)
+    setMobileView('landscape')
+    if (!window.matchMedia('(max-width: 680px)').matches) {
+      introTimer.current = window.setTimeout(() => setDetailsOpen(true), 3_500)
+    }
     if (!engine.current) engine.current = new SoundscapeEngine()
     try {
       await engine.current.start(focusPoint)
@@ -56,6 +63,7 @@ export function App() {
   const selectPoem = useCallback((poem: Poem) => {
     setSelectedPoem(poem)
     setDetailsOpen(true)
+    if (window.matchMedia('(max-width: 680px)').matches) setMobileView('poem')
     engine.current?.playPoemCue(poem)
   }, [])
 
@@ -71,8 +79,13 @@ export function App() {
   }
 
   useEffect(() => {
-    return () => engine.current?.dispose()
+    return () => {
+      if (introTimer.current) window.clearTimeout(introTimer.current)
+      engine.current?.dispose()
+    }
   }, [])
+
+  const chineseNumbers = ['一', '二', '三', '四', '五', '六', '七', '八']
 
   return (
     <main className="app-shell">
@@ -161,7 +174,33 @@ export function App() {
         <span>点击诗光</span>
       </div>
 
-      <section className={`poem-card ${detailsOpen ? 'open' : 'collapsed'}`}>
+      {entered && (
+        <div className="mobile-view-switch" aria-label="移动端视图">
+          <button
+            type="button"
+            className={mobileView === 'landscape' ? 'active' : ''}
+            onClick={() => {
+              setMobileView('landscape')
+              setDetailsOpen(false)
+            }}
+          >
+            山河
+          </button>
+          <button
+            type="button"
+            className={mobileView === 'poem' ? 'active' : ''}
+            onClick={() => {
+              setMobileView('poem')
+              setDetailsOpen(true)
+            }}
+          >
+            诗卷
+          </button>
+        </div>
+      )}
+
+      {entered && (
+        <section className={`poem-card ${detailsOpen ? 'open' : 'collapsed'} mobile-${mobileView}`}>
         <button
           type="button"
           className="card-toggle"
@@ -169,14 +208,14 @@ export function App() {
           aria-expanded={detailsOpen}
           aria-label={detailsOpen ? '收起诗词详情' : '展开诗词详情'}
         >
-          {detailsOpen ? '收' : '展'}
+          {detailsOpen ? '合卷' : '展卷'}
         </button>
 
         <div className="poem-meta">
           <span className="place-chip">{selectedPoem.placeName}</span>
           <span className="poem-count">
-            {String(selectedIndex + 1).padStart(2, '0')}
-            <small>/ {String(poems.length).padStart(2, '0')}</small>
+            其{chineseNumbers[selectedIndex]}
+            <small> · 共八首</small>
           </span>
         </div>
 
@@ -186,47 +225,55 @@ export function App() {
           <div className="poem-lines" aria-label={selectedPoem.lines.join('，')}>
             {selectedPoem.lines.map((line) => <p key={line}>{line}</p>)}
           </div>
+          <span className="poet-seal" aria-hidden="true">{selectedPoem.author.slice(0, 1)}</span>
         </div>
 
-        <div className="evidence-block">
-          <div>
-            <span className={`confidence ${selectedPoem.confidence}`}>
-              {confidenceLabels[selectedPoem.confidence]}
-            </span>
-            <span>{relationLabels[selectedPoem.relation]}</span>
+        <details className="evidence-block">
+          <summary>考据</summary>
+          <div className="evidence-content">
+            <div>
+              <span className={`confidence ${selectedPoem.confidence}`}>
+                {confidenceLabels[selectedPoem.confidence]}
+              </span>
+              <span>{relationLabels[selectedPoem.relation]}</span>
+            </div>
+            <p>{selectedPoem.evidence}</p>
+            <a href={selectedPoem.sourceUrl} target="_blank" rel="noreferrer">
+              文本来源：{selectedPoem.sourceLabel} ↗
+            </a>
           </div>
-          <p>{selectedPoem.evidence}</p>
-          <a href={selectedPoem.sourceUrl} target="_blank" rel="noreferrer">
-            文本来源：{selectedPoem.sourceLabel} ↗
-          </a>
-        </div>
+        </details>
 
         <div className="poem-controls">
-          <button type="button" onClick={() => moveSelection(-1)}>上一首</button>
+          <button type="button" onClick={() => moveSelection(-1)}>前卷</button>
           <div className="progress-dots">
-            {poems.map((poem) => (
+            {poems.map((poem, index) => (
               <button
                 key={poem.id}
                 type="button"
                 className={poem.id === selectedPoem.id ? 'active' : ''}
                 onClick={() => selectPoem(poem)}
                 aria-label={`查看${poem.author}《${poem.title}》`}
-              />
+              >
+                <span>{chineseNumbers[index]}</span>
+              </button>
             ))}
           </div>
-          <button type="button" onClick={() => moveSelection(1)}>下一首</button>
+          <button type="button" onClick={() => moveSelection(1)}>后卷</button>
         </div>
-      </section>
+        </section>
+      )}
 
       <footer className="release-note">
-        <span>山河版 0.3</span>
+        <span>山河卷 0.4</span>
         <p>{activeSnapshot.note}</p>
       </footer>
 
       {!entered && (
         <section className="entry-gate" aria-labelledby="entry-title">
-          <div className="gate-orbit orbit-one" />
-          <div className="gate-orbit orbit-two" />
+          <div className="gate-contour contour-one" />
+          <div className="gate-contour contour-two" />
+          <div className="gate-contour contour-three" />
           <div className="gate-content">
             <span className="gate-eyebrow">一卷山河 · 八处诗光</span>
             <h2 id="entry-title">
