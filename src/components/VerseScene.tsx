@@ -506,6 +506,49 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
   container.setAttribute('data-history-ready', 'true')
 }
 
+function splitVerseSentences(lines: string[]) {
+  return lines.flatMap((line) =>
+    line.match(/[^，。！？；!?;]+[，。！？；!?;]?/gu)?.map((sentence) => sentence.trim())
+      .filter(Boolean) ?? [line],
+  )
+}
+
+function sizeVerticalVerseMarker(element: HTMLElement, poem: Poem) {
+  const compact = window.matchMedia('(max-width: 680px)').matches
+  const sentences = splitVerseSentences(poem.lines)
+  const longestSentence = Math.max(
+    1,
+    ...sentences.map((sentence) => [...sentence].length),
+  )
+  const letterSpacingEm = compact ? 0.02 : 0.045
+  const heightBudget = compact
+    ? Math.min(190, Math.max(126, window.innerHeight * 0.255))
+    : Math.min(248, Math.max(170, window.innerHeight * 0.31))
+  const heightFit = heightBudget
+    / (longestSentence + Math.max(0, longestSentence - 1) * letterSpacingEm)
+  const signWidth = Math.min(compact ? window.innerWidth - 26 : 520, window.innerWidth - 26)
+  const fixedColumnsWidth = compact ? 72 : 108
+  const widthFit = (signWidth - fixedColumnsWidth)
+    / Math.max(1, sentences.length)
+    / (compact ? 1.32 : 1.45)
+  const minimumFontSize = compact ? 9.5 : 11
+  const maximumFontSize = compact ? 13 : 16
+  const fontSize = Math.min(
+    maximumFontSize,
+    Math.max(minimumFontSize, Math.min(heightFit, widthFit)),
+  )
+  const columnHeight = fontSize
+    * (longestSentence + Math.max(0, longestSentence - 1) * letterSpacingEm)
+  const titleSize = compact
+    ? Math.min(19, Math.max(16, fontSize * 1.48))
+    : Math.min(25, Math.max(19, fontSize * 1.52))
+
+  element.style.setProperty('--map-poem-font-size', `${fontSize.toFixed(2)}px`)
+  element.style.setProperty('--map-poem-title-size', `${titleSize.toFixed(2)}px`)
+  element.style.setProperty('--map-poem-column-height', `${columnHeight.toFixed(2)}px`)
+  element.dataset.sentenceCount = String(sentences.length)
+}
+
 function createVerticalVerseMarker(poem: Poem) {
   const element = document.createElement('article')
   element.className = 'map-poem-sign'
@@ -519,15 +562,16 @@ function createVerticalVerseMarker(poem: Poem) {
   author.textContent = `唐 · ${poem.author}`
   const lines = document.createElement('div')
   lines.className = 'map-poem-lines'
-  lines.setAttribute('aria-label', poem.lines.join('，'))
-  poem.lines.forEach((line) => {
+  lines.setAttribute('aria-label', poem.lines.join(''))
+  splitVerseSentences(poem.lines).forEach((sentence) => {
     const verseLine = document.createElement('p')
-    verseLine.textContent = line
+    verseLine.textContent = sentence
     lines.append(verseLine)
   })
   const place = document.createElement('footer')
   place.textContent = `${poem.placeName} · ${poem.visualEffectLabel}`
   element.append(heading, author, lines, place)
+  sizeVerticalVerseMarker(element, poem)
   return new Marker({ element, anchor: 'bottom', offset: [0, -28] })
 }
 
@@ -646,6 +690,17 @@ export function VerseScene({
     const updateMarkerDensity = () => {
       containerRef.current?.classList.toggle('map-near', map.getZoom() >= 4.25)
     }
+    const updateVerseSizing = () => {
+      const markerElement = selectedMarkerRef.current?.getElement()
+      if (markerElement) sizeVerticalVerseMarker(markerElement, selectedPoemRef.current)
+    }
+    const updatePoemScreenPositions = () => {
+      const positions = Object.fromEntries(poems.map((poem) => {
+        const point = map.project([poem.longitude, poem.latitude])
+        return [poem.id, { x: Math.round(point.x), y: Math.round(point.y) }]
+      }))
+      containerRef.current?.setAttribute('data-poem-screen-positions', JSON.stringify(positions))
+    }
     const reportFocus = (force = false) => {
       const now = performance.now()
       if (!force && now - lastFocusReport < 120) return
@@ -679,6 +734,7 @@ export function VerseScene({
         map.once('moveend', () => {
           introInProgressRef.current = false
           containerRef.current?.classList.remove('map-intro-moving')
+          containerRef.current?.setAttribute('data-intro-complete', 'true')
           const pendingPoem = pendingFocusRef.current
           pendingFocusRef.current = null
           if (pendingPoem) focusSelectedPoem(map, pendingPoem)
@@ -702,9 +758,14 @@ export function VerseScene({
     map.on('move', () => reportFocus())
     map.on('moveend', () => {
       containerRef.current?.classList.remove('map-moving')
+      updatePoemScreenPositions()
       reportFocus(true)
     })
     map.on('zoom', updateMarkerDensity)
+    map.on('resize', () => {
+      updateVerseSizing()
+      updatePoemScreenPositions()
+    })
 
     return () => {
       if (focusFrame) window.cancelAnimationFrame(focusFrame)
