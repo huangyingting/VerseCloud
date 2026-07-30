@@ -26,9 +26,13 @@ export interface Poem {
   title: string
   author: string
   dynasty: DynastyId
+  year: number
+  yearLabel: string
+  eraLabel: string
   lines: string[]
   longitude: number
   latitude: number
+  placeId: string
   placeName: string
   relation: PlaceRelation
   confidence: Confidence

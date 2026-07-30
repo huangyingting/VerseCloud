@@ -1,5 +1,13 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { activeSnapshot, snapshots } from './data/mapSnapshots'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
+import { snapshots } from './data/mapSnapshots'
 import { defaultPoem, poems } from './data/poems'
 import {
   computeSoundscapeMix,
@@ -15,6 +23,8 @@ const seasons: Array<{ id: Season; label: string; note: string }> = [
   { id: 'autumn', label: '秋', note: '暖金与澄江' },
   { id: 'winter', label: '冬', note: '霜白与寒水' },
 ]
+const poemYearFloor = Math.min(...poems.map((poem) => poem.year))
+const poemYearCeiling = Math.max(...poems.map((poem) => poem.year))
 const VerseScene = lazy(() =>
   import('./components/VerseScene').then((module) => ({ default: module.VerseScene })),
 )
@@ -30,6 +40,9 @@ export function App() {
   )
   const focusPoint = useRef<ScenePoint>(initialFocus)
   const engine = useRef<SoundscapeEngine | null>(null)
+  const eraProgress = poemYearCeiling === poemYearFloor
+    ? 50
+    : ((selectedPoem.year - poemYearFloor) / (poemYearCeiling - poemYearFloor)) * 100
 
   const startExperience = async () => {
     setEntered(true)
@@ -137,11 +150,16 @@ export function App() {
         </div>
       </header>
 
-      <aside className="era-panel">
+      <aside
+        className="era-panel"
+        aria-live="polite"
+        aria-label={`${selectedPoem.title}年代`}
+        style={{ '--era-progress': `${eraProgress.toFixed(1)}%` } as CSSProperties}
+      >
         <span className="era-kicker">时空坐标</span>
-        <strong>{activeSnapshot.dynastyLabel}</strong>
-        <div className="era-year">{activeSnapshot.year}</div>
-        <p>{activeSnapshot.eraLabel}</p>
+        <strong>唐</strong>
+        <div className="era-year">{selectedPoem.yearLabel}</div>
+        <p>{selectedPoem.eraLabel}</p>
         <div className="timeline-track">
           <span />
         </div>

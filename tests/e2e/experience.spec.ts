@@ -23,6 +23,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-hit-ready', 'true')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-scope', 'tang-surroundings')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-boundary-rendered', 'false')
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-point-style', 'layered-3d')
   await expect(page.locator('.map-legend, .interaction-hint, .release-note')).toHaveCount(0)
   expect(await page.locator('.geographic-map .maplibregl-marker').count()).toBeLessThanOrEqual(2)
   await expect(page.locator('canvas')).toHaveCSS('height', '960px')
@@ -57,6 +58,8 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.getByText('移舟泊烟渚，', { exact: true })).toBeVisible()
   await expect(page.getByText('日暮客愁新。', { exact: true })).toBeVisible()
   await expect(page.locator('.map-poem-sign')).toHaveAttribute('data-sentence-count', '4')
+  await expect(page.locator('.era-year')).toHaveText('约730')
+  await expect(page.locator('.era-panel p')).toHaveText('约开元十八年')
 
   await expect(map).not.toHaveClass(/map-moving/, { timeout: 3_000 })
   const viewportCenter = {
@@ -128,6 +131,8 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.getByText('朝辞白帝彩云间，', { exact: true })).toBeVisible()
   await expect(page.getByText('千里江陵一日还。', { exact: true })).toBeVisible()
   await expect(page.locator('.map-poem-sign')).toHaveAttribute('data-sentence-count', '4')
+  await expect(page.locator('.era-year')).toHaveText('759')
+  await expect(page.locator('.era-panel p')).toHaveText('乾元二年')
   await expect(page.locator('.geographic-map .poem-effect.effect-river-flight')).toBeVisible()
   await expect(page.locator('.poem-card')).toHaveCount(0)
 
