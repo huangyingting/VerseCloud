@@ -142,6 +142,107 @@ const seasonPalettes: Record<Season, {
   },
 }
 
+const TANG_PITCH = 45
+const TANG_BEARING = -8
+const tangBoundaryPoints = (activeSnapshot.boundary ?? []).flatMap((polygon) =>
+  polygon.flatMap((ring) => ring),
+)
+const tangLongitudes = tangBoundaryPoints.map(([longitude]) => longitude)
+const tangLatitudes = tangBoundaryPoints.map(([, latitude]) => latitude)
+const tangBounds: [[number, number], [number, number]] = [
+  [Math.min(...tangLongitudes), Math.min(...tangLatitudes)],
+  [Math.max(...tangLongitudes), Math.max(...tangLatitudes)],
+]
+// The interaction bounds are intentionally taller than the Tang outline. A
+// portrait viewport needs that latitude room to contain the realm's full
+// east-west span at 45 degrees; the outside-Tang WebGL mask still prevents any
+// neighbouring basemap from becoming visible.
+const tangInteractionBounds: [[number, number], [number, number]] = [
+  [50, -75],
+  [150, 80],
+]
+
+function overviewPadding(compact: boolean) {
+  return compact
+    ? { top: 116, right: 12, bottom: 24, left: 12 }
+    : { top: 104, right: 28, bottom: 28, left: 28 }
+}
+
+function fitTangAtFortyFiveDegrees(map: MapLibreMap, compact: boolean) {
+  const padding = overviewPadding(compact)
+  map.setMinZoom(0)
+  map.setMaxBounds(tangInteractionBounds)
+  map.jumpTo({ pitch: TANG_PITCH, bearing: TANG_BEARING })
+  map.fitBounds(tangBounds, {
+    padding,
+    pitch: TANG_PITCH,
+    bearing: TANG_BEARING,
+    linear: true,
+    duration: 0,
+  })
+
+  // MapLibre's built-in fitBounds is calculated in a flat camera. Re-project
+  // the actual Tang outline at 45 degrees and iteratively fit that screen-space
+  // silhouette so every boundary point remains inside the usable viewport.
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    const projected = tangBoundaryPoints.map(([longitude, latitude]) =>
+      map.project([longitude, latitude]),
+    )
+    const minX = Math.min(...projected.map((point) => point.x))
+    const maxX = Math.max(...projected.map((point) => point.x))
+    const minY = Math.min(...projected.map((point) => point.y))
+    const maxY = Math.max(...projected.map((point) => point.y))
+    const availableWidth = map.getContainer().clientWidth - padding.left - padding.right
+    const availableHeight = map.getContainer().clientHeight - padding.top - padding.bottom
+    const scale = Math.min(
+      availableWidth / Math.max(1, maxX - minX),
+      availableHeight / Math.max(1, maxY - minY),
+    ) * 0.985
+    map.jumpTo({
+      zoom: map.getZoom() + Math.log2(scale),
+      pitch: TANG_PITCH,
+      bearing: TANG_BEARING,
+    })
+
+    const adjusted = tangBoundaryPoints.map(([longitude, latitude]) =>
+      map.project([longitude, latitude]),
+    )
+    const outlineCenterX = (
+      Math.min(...adjusted.map((point) => point.x))
+      + Math.max(...adjusted.map((point) => point.x))
+    ) / 2
+    const outlineCenterY = (
+      Math.min(...adjusted.map((point) => point.y))
+      + Math.max(...adjusted.map((point) => point.y))
+    ) / 2
+    const targetCenterX = (padding.left + map.getContainer().clientWidth - padding.right) / 2
+    const targetCenterY = (padding.top + map.getContainer().clientHeight - padding.bottom) / 2
+    const nextCenter = map.unproject([
+      map.getContainer().clientWidth / 2 + outlineCenterX - targetCenterX,
+      map.getContainer().clientHeight / 2 + outlineCenterY - targetCenterY,
+    ])
+    map.jumpTo({
+      center: nextCenter,
+      pitch: TANG_PITCH,
+      bearing: TANG_BEARING,
+    })
+  }
+
+  const fittedZoom = map.getZoom()
+  map.setMinZoom(fittedZoom)
+  const finalOutline = tangBoundaryPoints.map(([longitude, latitude]) =>
+    map.project([longitude, latitude]),
+  )
+  const boundaryContained = finalOutline.every((point) =>
+    point.x >= padding.left - 1
+    && point.x <= map.getContainer().clientWidth - padding.right + 1
+    && point.y >= padding.top - 1
+    && point.y <= map.getContainer().clientHeight - padding.bottom + 1,
+  )
+  map.getContainer().setAttribute('data-boundary-contained', String(boundaryContained))
+  return fittedZoom
+}
+
 function applySeasonPalette(map: MapLibreMap, season: Season) {
   const palette = seasonPalettes[season]
   map.setPaintProperty('night-paper', 'background-color', palette.background)
@@ -487,7 +588,7 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
     id: 'poem-place-labels',
     type: 'symbol',
     source: 'poems',
-    minzoom: 3.3,
+    minzoom: 2.2,
     layout: {
       'icon-image': ['get', 'imageId'],
       'icon-size': ['case', ['get', 'selected'], 1.14, 1],
@@ -556,8 +657,8 @@ function focusSelectedPoem(map: MapLibreMap, poem: Poem) {
   map.easeTo({
     center: [poem.longitude, poem.latitude],
     zoom: compact ? 4.55 : 4.7,
-    pitch: compact ? 42 : 48,
-    bearing: -8,
+    pitch: TANG_PITCH,
+    bearing: TANG_BEARING,
     offset: compact ? [0, 128] : [0, 112],
     duration: reducedMotion ? 0 : 1_450,
     easing: (time) => 1 - Math.pow(1 - time, 3),
@@ -610,11 +711,14 @@ export function VerseScene({
       style: geographicStyle,
       center: compact ? [104, 34] : [101, 34],
       zoom: compact ? 3.55 : 4.2,
-      pitch: compact ? 34 : 38,
-      bearing: -8,
-      maxBounds: [[68, 16], [131, 53]],
-      maxPitch: 62,
-      minZoom: compact ? 3.3 : 4,
+      pitch: TANG_PITCH,
+      bearing: TANG_BEARING,
+      maxBounds: tangInteractionBounds,
+      minPitch: TANG_PITCH,
+      maxPitch: TANG_PITCH,
+      pitchWithRotate: false,
+      touchPitch: false,
+      minZoom: 0,
       maxZoom: 8,
       renderWorldCopies: false,
       maxTileCacheSize: compact ? 24 : 48,
@@ -638,11 +742,14 @@ export function VerseScene({
     compass.setAttribute('aria-label', '归正地图方向')
     compass.innerHTML = '<span>南</span><i></i>'
     compass.addEventListener('click', () => {
-      map.easeTo({ bearing: 0, pitch: compact ? 38 : 44, duration: 700 })
+      map.easeTo({ bearing: 0, pitch: TANG_PITCH, duration: 700 })
     })
     containerRef.current.append(compass)
     let focusFrame = 0
+    let resizeFrame = 0
     let lastFocusReport = 0
+    let overviewZoom = 0
+    let fittingOverview = false
     const updateMarkerDensity = () => {
       containerRef.current?.classList.toggle('map-near', map.getZoom() >= 4.25)
     }
@@ -657,6 +764,32 @@ export function VerseScene({
         focusFrame = 0
       })
     }
+    const refitOverview = () => {
+      fittingOverview = true
+      const wasAtOverview = overviewZoom === 0 || map.getZoom() <= overviewZoom + 0.08
+      const previousCamera = {
+        center: map.getCenter(),
+        zoom: map.getZoom(),
+        bearing: map.getBearing(),
+      }
+      const nextOverviewZoom = fitTangAtFortyFiveDegrees(
+        map,
+        window.matchMedia('(max-width: 680px)').matches,
+      )
+      overviewZoom = nextOverviewZoom
+      if (!wasAtOverview) {
+        map.setMinZoom(0)
+        map.jumpTo({
+          ...previousCamera,
+          zoom: Math.max(previousCamera.zoom, nextOverviewZoom),
+          pitch: TANG_PITCH,
+        })
+        map.setMinZoom(nextOverviewZoom)
+      }
+      containerRef.current?.setAttribute('data-pitch', String(TANG_PITCH))
+      containerRef.current?.setAttribute('data-overview-zoom', nextOverviewZoom.toFixed(3))
+      fittingOverview = false
+    }
 
     map.once('style.load', () => {
       addHistoricalLayers(map, poems, selectedPoemRef.current.id)
@@ -665,24 +798,13 @@ export function VerseScene({
       if (containerRef.current) void addWebglLabelLayers(map, containerRef.current, poems)
       updateMarkerDensity()
       containerRef.current?.setAttribute('data-map-ready', 'true')
-      reportFocus()
       window.requestAnimationFrame(() => {
-        containerRef.current?.classList.add('map-intro-moving')
-        map.easeTo({
-          center: compact ? [105.5, 33.2] : [101.5, 34.2],
-          zoom: compact ? 3.72 : 4.45,
-          pitch: compact ? 42 : 46,
-          bearing: -10,
-          duration: 2_400,
-          easing: (time) => 1 - Math.pow(1 - time, 3),
-        })
-        map.once('moveend', () => {
-          introInProgressRef.current = false
-          containerRef.current?.classList.remove('map-intro-moving')
-          const pendingPoem = pendingFocusRef.current
-          pendingFocusRef.current = null
-          if (pendingPoem) focusSelectedPoem(map, pendingPoem)
-        })
+        refitOverview()
+        introInProgressRef.current = false
+        reportFocus(true)
+        const pendingPoem = pendingFocusRef.current
+        pendingFocusRef.current = null
+        if (pendingPoem) focusSelectedPoem(map, pendingPoem)
       })
     })
     map.on('click', (event) => {
@@ -702,12 +824,23 @@ export function VerseScene({
     map.on('move', () => reportFocus())
     map.on('moveend', () => {
       containerRef.current?.classList.remove('map-moving')
+      if (!fittingOverview && overviewZoom > 0 && map.getZoom() <= overviewZoom + 0.02) {
+        refitOverview()
+      }
       reportFocus(true)
     })
     map.on('zoom', updateMarkerDensity)
+    map.on('resize', () => {
+      if (resizeFrame) window.cancelAnimationFrame(resizeFrame)
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = 0
+        if (map.isStyleLoaded()) refitOverview()
+      })
+    })
 
     return () => {
       if (focusFrame) window.cancelAnimationFrame(focusFrame)
+      if (resizeFrame) window.cancelAnimationFrame(resizeFrame)
       compass.remove()
       selectedMarkerRef.current?.remove()
       effectMarkerRef.current?.remove()
