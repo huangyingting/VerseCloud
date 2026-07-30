@@ -1,11 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { activeSnapshot, snapshots } from './data/mapSnapshots'
-import {
-  confidenceLabels,
-  defaultPoem,
-  poems,
-  relationLabels,
-} from './data/poems'
+import { defaultPoem, poems } from './data/poems'
 import {
   computeSoundscapeMix,
   soundscapeLabel,
@@ -29,28 +24,15 @@ export function App() {
   const [entered, setEntered] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(false)
   const [muted, setMuted] = useState(false)
-  const [detailsOpen, setDetailsOpen] = useState(false)
   const [season, setSeason] = useState<Season>('spring')
-  const [mobileView, setMobileView] = useState<'landscape' | 'poem'>('landscape')
   const [mix, setMix] = useState<SoundscapeMix>(() =>
     computeSoundscapeMix(initialFocus),
   )
   const focusPoint = useRef<ScenePoint>(initialFocus)
   const engine = useRef<SoundscapeEngine | null>(null)
-  const introTimer = useRef<number | null>(null)
-
-  const selectedIndex = useMemo(
-    () => poems.findIndex((poem) => poem.id === selectedPoem.id),
-    [selectedPoem.id],
-  )
 
   const startExperience = async () => {
     setEntered(true)
-    setDetailsOpen(false)
-    setMobileView('landscape')
-    if (!window.matchMedia('(max-width: 680px)').matches) {
-      introTimer.current = window.setTimeout(() => setDetailsOpen(true), 3_500)
-    }
     if (!engine.current) engine.current = new SoundscapeEngine()
     try {
       await engine.current.start(focusPoint.current)
@@ -76,15 +58,8 @@ export function App() {
 
   const selectPoem = useCallback((poem: Poem) => {
     setSelectedPoem(poem)
-    setDetailsOpen(true)
-    if (window.matchMedia('(max-width: 680px)').matches) setMobileView('poem')
     engine.current?.playPoemCue(poem)
   }, [])
-
-  const moveSelection = (direction: -1 | 1) => {
-    const nextIndex = (selectedIndex + direction + poems.length) % poems.length
-    selectPoem(poems[nextIndex])
-  }
 
   const toggleMute = () => {
     const nextMuted = !muted
@@ -94,16 +69,13 @@ export function App() {
 
   useEffect(() => {
     return () => {
-      if (introTimer.current) window.clearTimeout(introTimer.current)
       engine.current?.dispose()
     }
   }, [])
 
-  const chineseNumbers = ['一', '二', '三', '四', '五', '六', '七', '八']
-
   return (
     <main className={`app-shell season-${season}`}>
-      <div className="scene-layer" aria-hidden="true">
+      <div className="scene-layer">
         {entered && (
           <Suspense fallback={<div className="scene-loading">山河入卷中…</div>}>
             <VerseScene
@@ -212,115 +184,22 @@ export function App() {
       </div>
 
       {entered && (
-        <div className="mobile-view-switch" aria-label="移动端视图">
-          <button
-            type="button"
-            className={mobileView === 'landscape' ? 'active' : ''}
-            onClick={() => {
-              setMobileView('landscape')
-              setDetailsOpen(false)
-            }}
-          >
-            山河
-          </button>
-          <button
-            type="button"
-            className={mobileView === 'poem' ? 'active' : ''}
-            onClick={() => {
-              setMobileView('poem')
-              setDetailsOpen(true)
-            }}
-          >
-            诗卷
-          </button>
-        </div>
-      )}
-
-      {entered && (
-        <section className={`poem-card ${detailsOpen ? 'open' : 'collapsed'} mobile-${mobileView}`}>
-        <button
-          type="button"
-          className="card-toggle"
-          onClick={() => setDetailsOpen((open) => !open)}
-          aria-expanded={detailsOpen}
-          aria-label={detailsOpen ? '收起诗词详情' : '展开诗词详情'}
-        >
-          {detailsOpen ? '合卷' : '展卷'}
-        </button>
-
-        <div
-          key={selectedPoem.id}
-          className={`poem-card-effect poem-effect effect-${selectedPoem.visualEffect}`}
-          style={{ '--effect-accent': selectedPoem.accent } as CSSProperties}
-          aria-hidden="true"
-        >
-          <span className="effect-core" />
-          {Array.from({ length: 8 }, (_, index) => (
-            <i
-              key={index}
-              style={{ '--particle-index': String(index) } as CSSProperties}
-            />
+        <nav className="poem-access-list" aria-label="诗词地点快捷选择">
+          {poems.map((poem) => (
+            <button
+              key={poem.id}
+              type="button"
+              data-poem-select={poem.id}
+              onClick={() => selectPoem(poem)}
+            >
+              {poem.placeName} · {poem.author}《{poem.title}》
+            </button>
           ))}
-        </div>
-
-        <div className="poem-meta">
-          <div className="poem-location">
-            <span className="place-chip">{selectedPoem.placeName}</span>
-            <small>意象 · {selectedPoem.visualEffectLabel}</small>
-          </div>
-          <span className="poem-count">
-            其{chineseNumbers[selectedIndex]}
-            <small> · 共八首</small>
-          </span>
-        </div>
-
-        <div className="vertical-reading">
-          <h1>{selectedPoem.title}</h1>
-          <p className="vertical-author">唐 · {selectedPoem.author}</p>
-          <div className="poem-lines" aria-label={selectedPoem.lines.join('，')}>
-            {selectedPoem.lines.map((line) => <p key={line}>{line}</p>)}
-          </div>
-          <span className="poet-seal" aria-hidden="true">{selectedPoem.author.slice(0, 1)}</span>
-        </div>
-
-        <details className="evidence-block">
-          <summary>考据</summary>
-          <div className="evidence-content">
-            <div>
-              <span className={`confidence ${selectedPoem.confidence}`}>
-                {confidenceLabels[selectedPoem.confidence]}
-              </span>
-              <span>{relationLabels[selectedPoem.relation]}</span>
-            </div>
-            <p>{selectedPoem.evidence}</p>
-            <a href={selectedPoem.sourceUrl} target="_blank" rel="noreferrer">
-              文本来源：{selectedPoem.sourceLabel} ↗
-            </a>
-          </div>
-        </details>
-
-        <div className="poem-controls">
-          <button type="button" onClick={() => moveSelection(-1)}>前卷</button>
-          <div className="progress-dots">
-            {poems.map((poem, index) => (
-              <button
-                key={poem.id}
-                type="button"
-                className={poem.id === selectedPoem.id ? 'active' : ''}
-                onClick={() => selectPoem(poem)}
-                aria-label={`查看${poem.author}《${poem.title}》`}
-              >
-                <span>{chineseNumbers[index]}</span>
-              </button>
-            ))}
-          </div>
-          <button type="button" onClick={() => moveSelection(1)}>后卷</button>
-        </div>
-        </section>
+        </nav>
       )}
 
       <footer className="release-note">
-        <span>山河卷 0.7</span>
+        <span>山河卷 0.8</span>
         <p>{activeSnapshot.note}</p>
       </footer>
 

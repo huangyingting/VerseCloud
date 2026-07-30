@@ -383,6 +383,17 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: st
     data: poemCollection(poems, selectedPoemId),
   })
   map.addLayer({
+    id: 'poem-hit-target',
+    type: 'circle',
+    source: 'poems',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 19, 7, 25],
+      'circle-color': '#ffffff',
+      'circle-opacity': 0.001,
+      'circle-pitch-alignment': 'viewport',
+    },
+  })
+  map.addLayer({
     id: 'poem-halo',
     type: 'circle',
     source: 'poems',
@@ -407,14 +418,14 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: st
       'circle-radius': [
         'case',
         ['get', 'selected'],
-        ['interpolate', ['linear'], ['zoom'], 3, 7.5, 7, 12],
-        ['interpolate', ['linear'], ['zoom'], 3, 5.5, 7, 10],
+        ['interpolate', ['linear'], ['zoom'], 3, 9, 7, 13],
+        ['interpolate', ['linear'], ['zoom'], 3, 7, 7, 11],
       ],
-      'circle-color': ['case', ['get', 'selected'], '#e1bd6d', '#d6b971'],
-      'circle-stroke-color': '#fff0c9',
-      'circle-stroke-width': 1.2,
-      'circle-opacity': ['case', ['get', 'selected'], 1, 0.82],
-      'circle-pitch-alignment': 'map',
+      'circle-color': ['case', ['get', 'selected'], '#efc665', '#ddb95e'],
+      'circle-stroke-color': ['case', ['get', 'selected'], '#fff8dc', '#f6e5bd'],
+      'circle-stroke-width': ['case', ['get', 'selected'], 2.4, 1.8],
+      'circle-opacity': ['case', ['get', 'selected'], 1, 0.96],
+      'circle-pitch-alignment': 'viewport',
     },
   })
 }
@@ -501,18 +512,28 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
 }
 
 function createVerticalVerseMarker(poem: Poem) {
-  const element = document.createElement('div')
+  const element = document.createElement('article')
   element.className = 'map-poem-sign'
-  element.setAttribute('aria-hidden', 'true')
+  element.setAttribute('role', 'article')
+  element.setAttribute('aria-label', `${poem.author}《${poem.title}》`)
 
-  const heading = document.createElement('strong')
+  const heading = document.createElement('h1')
   heading.textContent = poem.title
-  const author = document.createElement('span')
-  author.textContent = poem.author
-  const place = document.createElement('small')
-  place.textContent = poem.placeName
-  element.append(heading, author, place)
-  return new Marker({ element, anchor: 'bottom-left', offset: [16, -12] })
+  const author = document.createElement('p')
+  author.className = 'map-poem-author'
+  author.textContent = `唐 · ${poem.author}`
+  const lines = document.createElement('div')
+  lines.className = 'map-poem-lines'
+  lines.setAttribute('aria-label', poem.lines.join('，'))
+  poem.lines.forEach((line) => {
+    const verseLine = document.createElement('p')
+    verseLine.textContent = line
+    lines.append(verseLine)
+  })
+  const place = document.createElement('footer')
+  place.textContent = `${poem.placeName} · ${poem.visualEffectLabel}`
+  element.append(heading, author, lines, place)
+  return new Marker({ element, anchor: 'bottom', offset: [0, -28] })
 }
 
 function createPoemEffectMarker(poem: Poem) {
@@ -536,14 +557,13 @@ function createPoemEffectMarker(poem: Poem) {
 function focusSelectedPoem(map: MapLibreMap, poem: Poem) {
   const compact = window.matchMedia('(max-width: 680px)').matches
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const horizontalOffset = -Math.min(230, window.innerWidth * 0.16)
 
   map.easeTo({
     center: [poem.longitude, poem.latitude],
     zoom: compact ? 4.55 : 4.7,
     pitch: compact ? 42 : 48,
     bearing: -8,
-    offset: compact ? [0, -145] : [horizontalOffset, 8],
+    offset: compact ? [0, 128] : [0, 112],
     duration: reducedMotion ? 0 : 1_450,
     easing: (time) => 1 - Math.pow(1 - time, 3),
   })
@@ -658,6 +678,7 @@ export function VerseScene({
 
     map.once('style.load', () => {
       addHistoricalLayers(map, poems, selectedPoemRef.current.id)
+      containerRef.current?.setAttribute('data-poem-hit-ready', 'true')
       applySeasonPalette(map, seasonRef.current)
       if (containerRef.current) void addWebglLabelLayers(map, containerRef.current, poems)
       updateMarkerDensity()
@@ -683,16 +704,16 @@ export function VerseScene({
       })
     })
     map.on('click', (event) => {
-      const layers = ['poem-points']
+      const layers = ['poem-hit-target', 'poem-points']
       if (map.getLayer('poem-place-labels')) layers.push('poem-place-labels')
       const feature = map.queryRenderedFeatures(event.point, { layers })[0]
       const poem = poems.find((item) => item.id === feature?.properties?.id)
       if (poem) onSelectRef.current(poem)
     })
-    map.on('mouseenter', 'poem-points', () => {
+    map.on('mouseenter', 'poem-hit-target', () => {
       map.getCanvas().style.cursor = 'pointer'
     })
-    map.on('mouseleave', 'poem-points', () => {
+    map.on('mouseleave', 'poem-hit-target', () => {
       map.getCanvas().style.cursor = ''
     })
     map.on('movestart', () => containerRef.current?.classList.add('map-moving'))

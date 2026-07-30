@@ -151,48 +151,117 @@ a:focus-visible {
 .map-poem-sign {
   display: flex;
   flex-direction: row-reverse;
-  gap: 7px;
-  max-height: 128px;
-  padding: 11px 9px 10px;
-  border: 1px solid rgb(226 211 178 / 18%);
+  gap: 10px;
+  max-width: min(520px, calc(100vw - 48px));
+  max-height: 270px;
+  padding: 16px 14px 14px;
+  border: 1px solid rgb(232 213 171 / 28%);
   color: #f2e7cf;
   background:
-    linear-gradient(90deg, rgb(159 137 91 / 5%) 1px, transparent 1px),
-    linear-gradient(135deg, rgb(28 38 32 / 90%), rgb(11 19 15 / 86%));
-  background-size: 14px 100%, auto;
-  box-shadow: 0 12px 32px rgb(0 0 0 / 34%), 0 0 22px rgb(208 179 111 / 8%);
-  backdrop-filter: blur(10px);
+    linear-gradient(90deg, rgb(185 155 94 / 5%) 1px, transparent 1px),
+    linear-gradient(145deg, rgb(32 43 36 / 92%), rgb(10 18 14 / 90%));
+  background-size: 18px 100%, auto;
+  box-shadow: 0 16px 42px rgb(0 0 0 / 42%), 0 0 28px rgb(220 183 104 / 10%);
+  backdrop-filter: blur(9px);
   pointer-events: none;
   font-family: var(--fangsong);
+  transition: opacity 160ms ease;
 }
 
-.map-poem-sign strong,
-.map-poem-sign > span,
-.map-poem-sign small {
+.map-poem-sign h1,
+.map-poem-sign p,
+.map-poem-sign footer {
   margin: 0;
   writing-mode: vertical-rl;
   text-orientation: upright;
 }
 
-.map-poem-sign strong {
+.map-poem-sign h1 {
+  flex: none;
   color: #fff0c9;
-  font-size: 19px;
+  font-size: 23px;
   font-weight: 400;
-  letter-spacing: 0.1em;
+  line-height: 1.15;
+  letter-spacing: 0.12em;
 }
 
-.map-poem-sign > span {
+.map-poem-author {
+  flex: none;
   color: #d1c3a3;
   font-size: 12px;
+  line-height: 1.45;
   letter-spacing: 0.05em;
 }
 
-.map-poem-sign small {
+.map-poem-lines {
+  display: flex;
+  flex: none;
+  flex-direction: row-reverse;
+  gap: 8px;
   padding-right: 6px;
   border-right: 1px solid rgb(226 211 178 / 12%);
+}
+
+.map-poem-lines p {
+  color: #eee2c9;
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: 0.045em;
+}
+
+.map-poem-sign footer {
+  flex: none;
+  padding-right: 8px;
+  border-right: 1px solid rgb(226 211 178 / 10%);
   color: #aeb9a8;
-  font-size: 9px;
-  letter-spacing: 0.03em;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+}
+
+.map-poem-sign::after {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  width: 1px;
+  height: 9px;
+  background: linear-gradient(#d6b76f, transparent);
+}
+
+.poem-access-list {
+  position: fixed;
+  z-index: 30;
+  top: 92px;
+  left: 16px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.poem-access-list:focus-within {
+  display: grid;
+  width: min(310px, calc(100vw - 32px));
+  height: auto;
+  padding: 10px;
+  overflow: visible;
+  clip-path: none;
+  border: 1px solid var(--line);
+  background: rgb(10 19 15 / 96%);
+}
+
+.poem-access-list button {
+  padding: 7px 9px;
+  border: 0;
+  color: var(--paper-muted);
+  background: transparent;
+  text-align: left;
+}
+
+.poem-access-list button:focus {
+  color: #fff0c9;
+  background: rgb(195 165 106 / 12%);
 }
 
 .poem-effect {
@@ -1550,50 +1619,22 @@ a:focus-visible {
   .brand-seal { width: 37px; height: 37px; font-size: 20px; }
   .dynasty-nav button { min-width: 48px; min-height: 35px; }
 
-  .poem-card {
-    top: auto;
-    right: 12px;
-    bottom: 56px;
-    width: calc(100vw - 24px);
-    max-height: 49vh;
-    padding: 19px 20px 17px;
-    overflow-y: auto;
-  }
-
-  .poem-card.collapsed {
-    transform: translateY(calc(100% + 45px));
-  }
-
-  .poem-card.mobile-landscape {
-    transform: translateY(calc(100% + 45px));
-  }
-
-  .poem-card.mobile-poem.open {
-    transform: none;
-  }
-
-  .card-toggle {
-    display: none;
-  }
-
-  .vertical-reading { min-height: 170px; padding: 14px 2px 12px; gap: 9px; }
-  .vertical-reading h1 { font-size: 23px; }
-  .vertical-author { font-size: 9px; }
-  .poem-lines { gap: 7px; padding-right: 9px; }
-  .poem-lines p { font-size: 13px; line-height: 1.4; }
-  .evidence-block { display: none; }
-  .poem-controls { margin-top: 12px; }
   .map-legend,
   .interaction-hint { display: none; }
   .release-note { display: none; }
-  .map-poem-sign { display: none; }
-  .poem-effect { scale: 0.82; }
-  .poem-card-effect {
-    top: 56px;
-    left: calc(50% - 110px);
-    opacity: 0.38;
-    scale: 0.72;
+  .map-poem-sign {
+    gap: 6px;
+    max-width: calc(100vw - 26px);
+    max-height: 215px;
+    padding: 11px 9px 10px;
+    backdrop-filter: blur(7px);
   }
+  .map-poem-sign h1 { font-size: 18px; }
+  .map-poem-author { font-size: 9px; }
+  .map-poem-lines { gap: 5px; padding-right: 5px; }
+  .map-poem-lines p { font-size: 12px; line-height: 1.32; letter-spacing: 0.02em; }
+  .map-poem-sign footer { padding-right: 5px; font-size: 8px; }
+  .poem-effect { scale: 0.82; }
   .verse-compass { left: 13px; bottom: 15px; }
   .maplibregl-ctrl-bottom-right { right: 8px; bottom: 51px; }
 
@@ -1607,35 +1648,6 @@ a:focus-visible {
 
   .season-switch > span { display: none; }
   .season-switch button { width: 29px; height: 29px; }
-
-  .mobile-view-switch {
-    position: absolute;
-    z-index: 8;
-    right: 13px;
-    bottom: 13px;
-    display: flex;
-    padding: 3px;
-    border: 1px solid rgb(221 200 155 / 22%);
-    background: rgb(10 19 15 / 82%);
-    box-shadow: 0 8px 25px rgb(0 0 0 / 28%);
-    backdrop-filter: blur(12px);
-  }
-
-  .mobile-view-switch button {
-    min-width: 53px;
-    padding: 7px 9px;
-    border: 0;
-    color: #74796d;
-    background: transparent;
-    cursor: pointer;
-    font-size: 11px;
-    letter-spacing: 0.12em;
-  }
-
-  .mobile-view-switch button.active {
-    color: #ead9b5;
-    background: rgb(185 153 89 / 14%);
-  }
 
   .gate-eyebrow { font-size: 9px; }
   .gate-content h2 { font-size: 35px; }
