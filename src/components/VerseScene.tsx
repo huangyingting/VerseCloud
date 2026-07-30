@@ -833,7 +833,9 @@ export function VerseScene({
 
       containerRef.current?.classList.add('map-wheel-zooming')
       if (wheelFocusTimer) window.clearTimeout(wheelFocusTimer)
-      wheelFocusTimer = window.setTimeout(finishWheelFocus, 420)
+      // `zoomend` normally closes the session. Keep a generous fallback for
+      // slow WebGL frames so the final camera update cannot lose its focus.
+      wheelFocusTimer = window.setTimeout(finishWheelFocus, 1_200)
     }
     const canvas = map.getCanvas()
     canvas.addEventListener('wheel', handleWheelFocus, { passive: true, capture: true })
