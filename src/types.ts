@@ -9,6 +9,16 @@ export type PlaceRelation =
 
 export type Confidence = 'high' | 'medium' | 'low'
 
+export type PoemVisualEffect =
+  | 'petals-embers'
+  | 'river-flight'
+  | 'moon-fire'
+  | 'river-mist'
+  | 'sun-river'
+  | 'cloud-crane'
+  | 'waterfall'
+  | 'morning-rain'
+
 export interface Poem {
   id: string
   title: string
@@ -24,6 +34,8 @@ export interface Poem {
   sourceLabel: string
   sourceUrl: string
   accent: string
+  visualEffect: PoemVisualEffect
+  visualEffectLabel: string
 }
 
 export interface MapSnapshot {

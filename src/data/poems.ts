@@ -23,6 +23,8 @@ export const poems: Poem[] = [
     sourceLabel: '全唐诗 · 概念版编辑记录',
     sourceUrl,
     accent: '#e6ad62',
+    visualEffect: 'petals-embers',
+    visualEffectLabel: '花影 · 烽烟',
   },
   {
     id: 'li-bai-baidi',
@@ -42,6 +44,8 @@ export const poems: Poem[] = [
     sourceLabel: '全唐诗 · 概念版编辑记录',
     sourceUrl,
     accent: '#7ec9c3',
+    visualEffect: 'river-flight',
+    visualEffectLabel: '彩云 · 轻舟',
   },
   {
     id: 'zhang-ji-fengqiao',
@@ -61,6 +65,8 @@ export const poems: Poem[] = [
     sourceLabel: '全唐诗 · 概念版编辑记录',
     sourceUrl,
     accent: '#78a4c5',
+    visualEffect: 'moon-fire',
+    visualEffectLabel: '月落 · 渔火',
   },
   {
     id: 'meng-haoran-jiande',
@@ -77,6 +83,8 @@ export const poems: Poem[] = [
     sourceLabel: '全唐诗 · 概念版编辑记录',
     sourceUrl,
     accent: '#82b8a1',
+    visualEffect: 'river-mist',
+    visualEffectLabel: '烟渚 · 江月',
   },
   {
     id: 'wang-zhihuan-guanquelou',
@@ -93,6 +101,8 @@ export const poems: Poem[] = [
     sourceLabel: '全唐诗 · 概念版编辑记录',
     sourceUrl,
     accent: '#d6ca86',
+    visualEffect: 'sun-river',
+    visualEffectLabel: '白日 · 黄河',
   },
   {
     id: 'cui-hao-huanghelou',
@@ -114,6 +124,8 @@ export const poems: Poem[] = [
     sourceLabel: '全唐诗 · 概念版编辑记录',
     sourceUrl,
     accent: '#c89b66',
+    visualEffect: 'cloud-crane',
+    visualEffectLabel: '黄鹤 · 白云',
   },
   {
     id: 'li-bai-lushan',
@@ -133,6 +145,8 @@ export const poems: Poem[] = [
     sourceLabel: '全唐诗 · 概念版编辑记录',
     sourceUrl,
     accent: '#9d8bc0',
+    visualEffect: 'waterfall',
+    visualEffectLabel: '紫烟 · 银河',
   },
   {
     id: 'wang-wei-weicheng',
@@ -149,6 +163,8 @@ export const poems: Poem[] = [
     sourceLabel: '全唐诗 · 概念版编辑记录',
     sourceUrl,
     accent: '#b2c978',
+    visualEffect: 'morning-rain',
+    visualEffectLabel: '朝雨 · 柳色',
   },
 ]
 

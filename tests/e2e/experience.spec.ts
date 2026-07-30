@@ -24,6 +24,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
 
   await page.getByRole('button', { name: '后卷' }).click()
   await expect(page.getByRole('heading', { name: '早发白帝城' })).toBeVisible()
+  await expect(page.locator('.poem-effect.effect-river-flight')).toBeVisible()
   await page.getByText('考据', { exact: true }).click()
   await expect(page.getByText('行旅节点', { exact: true })).toBeVisible()
   expect(runtimeErrors).toEqual([])

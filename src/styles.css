@@ -156,11 +156,11 @@ a:focus-visible {
   min-width: 28px;
   padding: 0 0 2px;
   border: 0;
-  color: #c7bda6;
+  color: #f0dfb8;
   background: transparent;
   cursor: pointer;
   filter: drop-shadow(0 3px 4px rgb(0 0 0 / 70%));
-  opacity: 0.64;
+  opacity: 0.82;
   transition: opacity 200ms ease;
   font-family: var(--fangsong);
 }
@@ -168,7 +168,7 @@ a:focus-visible {
 .marker-stem {
   position: relative;
   width: 1px;
-  height: 20px;
+  height: 25px;
   background: linear-gradient(180deg, transparent, #c3aa70);
 }
 
@@ -176,21 +176,22 @@ a:focus-visible {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: -3px;
-  width: 6px;
-  height: 6px;
+  bottom: -5px;
+  width: 9px;
+  height: 9px;
   border: 1px solid #f0dfbd;
   border-radius: 50%;
-  background: #bca46d;
-  box-shadow: 0 0 8px 1px rgb(205 177 113 / 52%);
+  background: #d8ba72;
+  box-shadow: 0 0 13px 3px rgb(223 190 112 / 62%);
   transform: translateX(-50%);
 }
 
 .marker-place-label {
-  padding-bottom: 11px;
-  font-size: 11px;
+  padding: 0 4px 15px;
+  color: #f3e5c5;
+  font-size: 15px;
   letter-spacing: 0.04em;
-  text-shadow: 0 1px 5px #000;
+  text-shadow: 0 1px 4px #06100c, 0 0 10px rgb(4 9 7 / 92%);
   white-space: nowrap;
   transition: color 160ms ease, transform 160ms ease;
   opacity: 0;
@@ -205,18 +206,27 @@ a:focus-visible {
 }
 
 .geographic-poem-marker.is-selected {
-  color: #fff0c8;
+  color: #fff5d8;
   opacity: 1;
 }
 
 .geographic-poem-marker.is-selected .marker-stem {
-  height: 27px;
+  height: 34px;
   background: linear-gradient(180deg, transparent, #e6c273);
 }
 
 .geographic-poem-marker.is-selected .marker-stem::after {
+  width: 12px;
+  height: 12px;
+  bottom: -6px;
   background: #e1bd6d;
-  box-shadow: 0 0 15px 4px rgb(225 189 109 / 62%);
+  box-shadow: 0 0 20px 6px rgb(225 189 109 / 68%);
+}
+
+.geographic-poem-marker.is-selected .marker-place-label {
+  color: #fff3d3;
+  font-size: 17px;
+  text-shadow: 0 1px 4px #06100c, 0 0 14px rgb(238 199 116 / 32%);
 }
 
 .geographic-poem-marker:hover .marker-place-label,
@@ -232,12 +242,12 @@ a:focus-visible {
   max-height: 128px;
   padding: 11px 9px 10px;
   border: 1px solid rgb(226 211 178 / 18%);
-  color: #eadfc6;
+  color: #f2e7cf;
   background:
     linear-gradient(90deg, rgb(159 137 91 / 5%) 1px, transparent 1px),
     linear-gradient(135deg, rgb(28 38 32 / 90%), rgb(11 19 15 / 86%));
   background-size: 14px 100%, auto;
-  box-shadow: 0 12px 32px rgb(0 0 0 / 28%);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 34%), 0 0 22px rgb(208 179 111 / 8%);
   backdrop-filter: blur(10px);
   pointer-events: none;
   font-family: var(--fangsong);
@@ -252,24 +262,362 @@ a:focus-visible {
 }
 
 .map-poem-sign strong {
-  color: #f2dfb7;
-  font-size: 16px;
+  color: #fff0c9;
+  font-size: 19px;
   font-weight: 400;
   letter-spacing: 0.1em;
 }
 
 .map-poem-sign > span {
-  color: #a9a087;
-  font-size: 10px;
+  color: #d1c3a3;
+  font-size: 12px;
   letter-spacing: 0.05em;
 }
 
 .map-poem-sign small {
   padding-right: 6px;
   border-right: 1px solid rgb(226 211 178 / 12%);
-  color: #7f8d82;
-  font-size: 8px;
+  color: #aeb9a8;
+  font-size: 9px;
   letter-spacing: 0.03em;
+}
+
+.poem-effect {
+  position: relative;
+  width: 220px;
+  height: 180px;
+  overflow: visible;
+  opacity: 0.92;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.poem-effect .effect-core,
+.poem-effect i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  pointer-events: none;
+}
+
+.poem-effect .effect-core::before,
+.poem-effect .effect-core::after {
+  content: "";
+  position: absolute;
+}
+
+.effect-petals-embers .effect-core {
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgb(218 121 87 / 35%);
+  border-radius: 50%;
+  box-shadow: 0 0 26px rgb(202 75 48 / 24%), inset 0 0 18px rgb(229 174 104 / 12%);
+  transform: translate(-50%, -50%);
+  animation: effect-breathe 3.8s ease-in-out infinite;
+}
+
+.effect-petals-embers i {
+  --x: 0px;
+  --y: 0px;
+  width: 7px;
+  height: 4px;
+  border-radius: 80% 15% 70% 20%;
+  background: linear-gradient(135deg, #e2b179, #a84f43);
+  box-shadow: 0 0 7px rgb(224 112 72 / 65%);
+  animation: petals-and-embers 4.6s ease-in infinite;
+  animation-delay: calc(var(--particle-index) * -0.53s);
+}
+
+.effect-petals-embers i:nth-of-type(1) { --x: -52px; --y: -20px; }
+.effect-petals-embers i:nth-of-type(2) { --x: -25px; --y: 5px; }
+.effect-petals-embers i:nth-of-type(3) { --x: 14px; --y: -32px; }
+.effect-petals-embers i:nth-of-type(4) { --x: 48px; --y: -8px; }
+.effect-petals-embers i:nth-of-type(5) { --x: 62px; --y: 20px; }
+.effect-petals-embers i:nth-of-type(6) { --x: -68px; --y: 17px; }
+.effect-petals-embers i:nth-of-type(7) { --x: 28px; --y: 28px; }
+.effect-petals-embers i:nth-of-type(8) { --x: -8px; --y: 35px; }
+
+.effect-river-flight .effect-core,
+.effect-sun-river .effect-core {
+  width: 172px;
+  height: 52px;
+  border-bottom: 2px solid rgb(115 215 218 / 52%);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 8px rgb(96 198 201 / 45%));
+  transform: translate(-50%, -62%) rotate(-9deg);
+  animation: river-breathe 3.4s ease-in-out infinite;
+}
+
+.effect-river-flight .effect-core::after {
+  right: 21px;
+  bottom: -5px;
+  width: 20px;
+  height: 5px;
+  border-bottom: 2px solid #f2d49a;
+  border-radius: 0 0 50% 50%;
+  box-shadow: 0 4px 9px rgb(124 217 217 / 40%);
+}
+
+.effect-river-flight i,
+.effect-sun-river i {
+  --stream-y: 0px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #b8f0e9;
+  box-shadow: 0 0 9px #71c9c9;
+  animation: river-stream 3.2s linear infinite;
+  animation-delay: calc(var(--particle-index) * -0.4s);
+}
+
+.effect-river-flight i:nth-of-type(2n),
+.effect-sun-river i:nth-of-type(2n) { --stream-y: 10px; }
+.effect-river-flight i:nth-of-type(3n),
+.effect-sun-river i:nth-of-type(3n) { --stream-y: -8px; }
+
+.effect-moon-fire .effect-core,
+.effect-river-mist .effect-core {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgb(216 232 218 / 72%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, rgb(245 239 204 / 42%), rgb(178 205 194 / 10%) 48%, transparent 70%);
+  box-shadow: 0 0 20px rgb(190 222 213 / 32%), 0 0 52px rgb(134 185 179 / 18%);
+  transform: translate(-50%, -74%);
+  animation: moon-pulse 4.2s ease-in-out infinite;
+}
+
+.effect-moon-fire .effect-core::after {
+  left: 52px;
+  top: 38px;
+  width: 8px;
+  height: 13px;
+  border-radius: 55% 45% 48% 52%;
+  background: #e89b4c;
+  box-shadow: 0 0 12px #e07938, 0 0 24px rgb(231 139 61 / 62%);
+  animation: fishing-fire 1.7s ease-in-out infinite alternate;
+}
+
+.effect-moon-fire i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #eaaa59;
+  box-shadow: 0 0 7px #e47d3e;
+  animation: fire-spark 2.5s ease-out infinite;
+  animation-delay: calc(var(--particle-index) * -0.31s);
+}
+
+.effect-river-mist .effect-core {
+  border-color: rgb(202 229 217 / 45%);
+  transform: translate(-50%, -50%);
+}
+
+.effect-river-mist .effect-core::before,
+.effect-river-mist .effect-core::after {
+  left: 50%;
+  top: 50%;
+  width: 86px;
+  height: 28px;
+  border: 1px solid rgb(173 222 210 / 40%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: mist-ring 4.8s ease-out infinite;
+}
+
+.effect-river-mist .effect-core::after { animation-delay: -2.4s; }
+
+.effect-river-mist i,
+.effect-cloud-crane i {
+  width: 34px;
+  height: 8px;
+  border-top: 2px solid rgb(224 237 221 / 60%);
+  border-radius: 50%;
+  filter: blur(0.4px);
+  animation: mist-drift 5.5s ease-in-out infinite;
+  animation-delay: calc(var(--particle-index) * -0.58s);
+}
+
+.effect-sun-river .effect-core::after {
+  left: 8px;
+  bottom: 32px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e7c16d;
+  box-shadow: 0 0 18px #dbab57, 0 0 42px rgb(225 173 78 / 42%);
+  animation: sun-set 4.5s ease-in-out infinite;
+}
+
+.effect-sun-river i {
+  background: #e4c676;
+  box-shadow: 0 0 9px #d9af5f;
+}
+
+.effect-cloud-crane .effect-core {
+  width: 92px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(234 230 199 / 28%), transparent 70%);
+  filter: blur(3px);
+  transform: translate(-50%, -50%);
+  animation: cloud-breathe 5s ease-in-out infinite;
+}
+
+.effect-cloud-crane i {
+  width: 17px;
+  height: 8px;
+  border-top-color: rgb(250 234 192 / 82%);
+  filter: drop-shadow(0 0 5px rgb(231 214 172 / 50%));
+  animation: crane-flight 6.2s ease-in-out infinite;
+  animation-delay: calc(var(--particle-index) * -0.72s);
+}
+
+.effect-waterfall .effect-core {
+  width: 9px;
+  height: 105px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgb(219 207 240 / 15%), #d3edec 42%, rgb(107 188 195 / 22%));
+  box-shadow: 0 0 14px rgb(190 222 226 / 58%), 0 0 38px rgb(151 124 196 / 24%);
+  transform: translate(-50%, -63%);
+  animation: waterfall-breathe 2.8s ease-in-out infinite;
+}
+
+.effect-waterfall .effect-core::before {
+  left: -28px;
+  top: -11px;
+  width: 64px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgb(165 125 195 / 16%);
+  filter: blur(7px);
+  animation: purple-mist 4.4s ease-in-out infinite alternate;
+}
+
+.effect-waterfall i {
+  --fall-x: 0px;
+  top: 15%;
+  width: 2px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, transparent, #d9f2ee, transparent);
+  animation: falling-water 1.9s linear infinite;
+  animation-delay: calc(var(--particle-index) * -0.22s);
+}
+
+.effect-waterfall i:nth-of-type(2n) { --fall-x: 11px; }
+.effect-waterfall i:nth-of-type(3n) { --fall-x: -10px; }
+
+.effect-morning-rain .effect-core {
+  width: 104px;
+  height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(159 203 143 / 30%), transparent 72%);
+  filter: blur(2px);
+  transform: translate(-50%, -20%);
+  animation: willow-breathe 4.2s ease-in-out infinite;
+}
+
+.effect-morning-rain i {
+  --rain-x: 0px;
+  top: 20%;
+  width: 1.5px;
+  height: 31px;
+  background: linear-gradient(180deg, transparent, rgb(177 231 220 / 88%), transparent);
+  animation: morning-rain 2.1s linear infinite;
+  animation-delay: calc(var(--particle-index) * -0.25s);
+}
+
+.effect-morning-rain i:nth-of-type(2) { --rain-x: -42px; }
+.effect-morning-rain i:nth-of-type(3) { --rain-x: -24px; }
+.effect-morning-rain i:nth-of-type(4) { --rain-x: -7px; }
+.effect-morning-rain i:nth-of-type(5) { --rain-x: 13px; }
+.effect-morning-rain i:nth-of-type(6) { --rain-x: 31px; }
+.effect-morning-rain i:nth-of-type(7) { --rain-x: 47px; }
+.effect-morning-rain i:nth-of-type(8) { --rain-x: 61px; }
+
+@keyframes effect-breathe {
+  50% { opacity: 0.55; scale: 1.22; }
+}
+
+@keyframes petals-and-embers {
+  0% { opacity: 0; transform: translate(var(--x), calc(var(--y) - 28px)) rotate(0deg); }
+  24% { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(calc(var(--x) + 19px), calc(var(--y) + 45px)) rotate(210deg); }
+}
+
+@keyframes river-breathe {
+  50% { opacity: 0.55; filter: drop-shadow(0 0 13px rgb(96 198 201 / 58%)); }
+}
+
+@keyframes river-stream {
+  0% { opacity: 0; transform: translate(-92px, var(--stream-y)) scale(0.5); }
+  25% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(91px, calc(var(--stream-y) + 12px)) scale(1.1); }
+}
+
+@keyframes moon-pulse {
+  50% { opacity: 0.62; scale: 1.12; }
+}
+
+@keyframes fishing-fire {
+  to { scale: 0.72 1.18; opacity: 0.68; }
+}
+
+@keyframes fire-spark {
+  0% { opacity: 0; transform: translate(47px, 20px); }
+  30% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(58px, -24px); }
+}
+
+@keyframes mist-ring {
+  from { opacity: 0.55; scale: 0.45; }
+  to { opacity: 0; scale: 1.65; }
+}
+
+@keyframes mist-drift {
+  0%, 100% { opacity: 0; transform: translate(-80px, 8px) scaleX(0.7); }
+  35%, 70% { opacity: 0.65; }
+  60% { transform: translate(35px, -12px) scaleX(1.3); }
+}
+
+@keyframes sun-set {
+  50% { translate: 9px 5px; opacity: 0.72; }
+}
+
+@keyframes cloud-breathe {
+  50% { scale: 1.35 1.1; opacity: 0.5; }
+}
+
+@keyframes crane-flight {
+  0% { opacity: 0; transform: translate(-75px, 36px) rotate(-12deg); }
+  25%, 70% { opacity: 0.8; }
+  100% { opacity: 0; transform: translate(83px, -52px) rotate(9deg); }
+}
+
+@keyframes waterfall-breathe {
+  50% { opacity: 0.68; scale: 1.25 1; }
+}
+
+@keyframes purple-mist {
+  to { translate: 14px -4px; scale: 1.3; opacity: 0.45; }
+}
+
+@keyframes falling-water {
+  0% { opacity: 0; transform: translate(var(--fall-x), -52px); }
+  30% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(var(--fall-x), 65px); }
+}
+
+@keyframes willow-breathe {
+  50% { opacity: 0.54; scale: 1.18; }
+}
+
+@keyframes morning-rain {
+  0% { opacity: 0; transform: translate(var(--rain-x), -68px) rotate(18deg); }
+  25% { opacity: 0.82; }
+  100% { opacity: 0; transform: translate(calc(var(--rain-x) + 27px), 61px) rotate(18deg); }
 }
 
 .scene-loading {
@@ -705,6 +1053,18 @@ a:focus-visible {
   border: 1px solid rgb(121 170 160 / 28%);
   color: #9bc1b9;
   font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.poem-location {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.poem-location small {
+  color: #94896f;
+  font-size: 9px;
   letter-spacing: 0.06em;
 }
 
@@ -1182,6 +1542,13 @@ a:focus-visible {
   .interaction-hint { display: none; }
   .release-note { display: none; }
   .map-poem-sign { display: none; }
+  .poem-effect { scale: 0.82; }
+  .map-near .geographic-poem-marker:not(.is-selected) .marker-place-label {
+    opacity: 0;
+  }
+  .geographic-poem-marker.is-selected .marker-place-label {
+    font-size: 16px;
+  }
   .verse-compass { left: 13px; bottom: 15px; }
   .maplibregl-ctrl-bottom-right { right: 8px; bottom: 51px; }
 

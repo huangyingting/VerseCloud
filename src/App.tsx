@@ -212,7 +212,10 @@ export function App() {
         </button>
 
         <div className="poem-meta">
-          <span className="place-chip">{selectedPoem.placeName}</span>
+          <div className="poem-location">
+            <span className="place-chip">{selectedPoem.placeName}</span>
+            <small>意象 · {selectedPoem.visualEffectLabel}</small>
+          </div>
           <span className="poem-count">
             其{chineseNumbers[selectedIndex]}
             <small> · 共八首</small>
@@ -265,7 +268,7 @@ export function App() {
       )}
 
       <footer className="release-note">
-        <span>山河卷 0.4</span>
+        <span>山河卷 0.5</span>
         <p>{activeSnapshot.note}</p>
       </footer>
 

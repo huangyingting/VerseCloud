@@ -196,10 +196,10 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[]) {
     type: 'circle',
     source: 'poems',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 8, 7, 14],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 13, 7, 24],
       'circle-color': '#d7ba76',
-      'circle-opacity': 0.08,
-      'circle-blur': 0.65,
+      'circle-opacity': 0.14,
+      'circle-blur': 0.72,
       'circle-pitch-alignment': 'map',
     },
   })
@@ -208,11 +208,11 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[]) {
     type: 'circle',
     source: 'poems',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 3.5, 7, 7],
-      'circle-color': '#bda56e',
-      'circle-stroke-color': '#e8d8b4',
-      'circle-stroke-width': 0.8,
-      'circle-opacity': 0.58,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 5.5, 7, 10],
+      'circle-color': '#d6b971',
+      'circle-stroke-color': '#fff0c9',
+      'circle-stroke-width': 1.2,
+      'circle-opacity': 0.82,
       'circle-pitch-alignment': 'map',
     },
   })
@@ -260,6 +260,40 @@ function createVerticalVerseMarker(poem: Poem) {
   return new Marker({ element, anchor: 'bottom-left', offset: [16, -12] })
 }
 
+function createPoemEffectMarker(poem: Poem) {
+  const element = document.createElement('div')
+  element.className = `poem-effect effect-${poem.visualEffect}`
+  element.setAttribute('aria-hidden', 'true')
+  element.style.setProperty('--effect-accent', poem.accent)
+
+  const core = document.createElement('span')
+  core.className = 'effect-core'
+  element.append(core)
+  for (let index = 0; index < 8; index += 1) {
+    const particle = document.createElement('i')
+    particle.style.setProperty('--particle-index', String(index))
+    element.append(particle)
+  }
+
+  return new Marker({ element, anchor: 'center' })
+}
+
+function focusSelectedPoem(map: MapLibreMap, poem: Poem) {
+  const compact = window.matchMedia('(max-width: 680px)').matches
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const horizontalOffset = -Math.min(230, window.innerWidth * 0.16)
+
+  map.easeTo({
+    center: [poem.longitude, poem.latitude],
+    zoom: compact ? 4.55 : 4.7,
+    pitch: compact ? 54 : 60,
+    bearing: -8,
+    offset: compact ? [0, -145] : [horizontalOffset, 8],
+    duration: reducedMotion ? 0 : 1_450,
+    easing: (time) => 1 - Math.pow(1 - time, 3),
+  })
+}
+
 export function VerseScene({
   poems,
   selectedPoem,
@@ -269,6 +303,10 @@ export function VerseScene({
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const selectedMarkerRef = useRef<Marker | null>(null)
+  const effectMarkerRef = useRef<Marker | null>(null)
+  const selectionInitializedRef = useRef(false)
+  const introInProgressRef = useRef(false)
+  const pendingFocusRef = useRef<Poem | null>(null)
   const selectedPoemRef = useRef(selectedPoem)
   const onSelectRef = useRef(onSelectPoem)
   const onFocusRef = useRef(onFocusChange)
@@ -303,6 +341,7 @@ export function VerseScene({
       canvasContextAttributes: { antialias: true },
     })
     mapRef.current = map
+    introInProgressRef.current = true
 
     map.addControl(
       new AttributionControl({
@@ -374,7 +413,13 @@ export function VerseScene({
           duration: 3_600,
           easing: (time) => 1 - Math.pow(1 - time, 3),
         })
-        map.once('moveend', () => containerRef.current?.classList.remove('map-intro-moving'))
+        map.once('moveend', () => {
+          introInProgressRef.current = false
+          containerRef.current?.classList.remove('map-intro-moving')
+          const pendingPoem = pendingFocusRef.current
+          pendingFocusRef.current = null
+          if (pendingPoem) focusSelectedPoem(map, pendingPoem)
+        })
       })
     })
     map.on('move', reportFocus)
@@ -385,7 +430,12 @@ export function VerseScene({
       markers.forEach((marker) => marker.remove())
       compass.remove()
       selectedMarkerRef.current?.remove()
+      effectMarkerRef.current?.remove()
       selectedMarkerRef.current = null
+      effectMarkerRef.current = null
+      selectionInitializedRef.current = false
+      introInProgressRef.current = false
+      pendingFocusRef.current = null
       map.remove()
       mapRef.current = null
     }
@@ -395,6 +445,10 @@ export function VerseScene({
     const map = mapRef.current
     if (!map) return
     selectedMarkerRef.current?.remove()
+    effectMarkerRef.current?.remove()
+    effectMarkerRef.current = createPoemEffectMarker(selectedPoem)
+      .setLngLat([selectedPoem.longitude, selectedPoem.latitude])
+      .addTo(map)
     selectedMarkerRef.current = createVerticalVerseMarker(selectedPoem)
       .setLngLat([selectedPoem.longitude, selectedPoem.latitude])
       .addTo(map)
@@ -406,6 +460,16 @@ export function VerseScene({
       .forEach((element) => {
         element.classList.toggle('is-selected', element.dataset.poemId === selectedPoem.id)
       })
+
+    if (!selectionInitializedRef.current) {
+      selectionInitializedRef.current = true
+      return
+    }
+    if (introInProgressRef.current) {
+      pendingFocusRef.current = selectedPoem
+      return
+    }
+    focusSelectedPoem(map, selectedPoem)
   }, [poems, selectedPoem])
 
   return <div ref={containerRef} className="geographic-map" aria-label="三维唐代概念地形地图" />

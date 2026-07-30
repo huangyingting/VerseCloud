@@ -2,7 +2,9 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 60_000,
+  // Real terrain tiles and the cinematic camera are intentionally exercised;
+  // software WebGL can need more than a minute on CI runners.
+  timeout: 90_000,
   // Chromium software WebGL is memory-heavy; serialize the two visual checks
   // so CI validates rendering without competing GPU contexts.
   fullyParallel: false,
