@@ -9,7 +9,6 @@ import {
 import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
-import { activeSnapshot } from '../data/mapSnapshots'
 import { tangMapLabels, tangRegionDivisions } from '../data/tangGeography'
 import { projectPoint } from '../lib/geo'
 import type { Poem, ScenePoint, Season } from '../types'
@@ -25,6 +24,11 @@ interface VerseSceneProps {
 // Vite does not discover MapLibre's import.meta.url worker when the library is
 // loaded lazily. Importing it as an asset makes the production URL explicit.
 setWorkerUrl(mapWorkerUrl)
+
+const tangSurroundingsBounds: [[number, number], [number, number]] = [
+  [68, 16],
+  [131, 53],
+]
 
 const geographicStyle: StyleSpecification = {
   version: 8,
@@ -114,7 +118,6 @@ const seasonPalettes: Record<Season, {
   reliefHue: number
   reliefSaturation: number
   reliefBrightness: number
-  territory: string
   division: string
   ocean: string
   lake: string
@@ -123,22 +126,22 @@ const seasonPalettes: Record<Season, {
 }> = {
   spring: {
     background: '#0a1712', reliefHue: 12, reliefSaturation: -0.34, reliefBrightness: 0.5,
-    territory: '#b89b66', division: '#c5af7d',
+    division: '#c5af7d',
     ocean: '#08232a', lake: '#14373b', river: '#2f6360', water: '#103137',
   },
   summer: {
     background: '#071711', reliefHue: 32, reliefSaturation: -0.2, reliefBrightness: 0.45,
-    territory: '#9f9c5d', division: '#a9b77a',
+    division: '#a9b77a',
     ocean: '#06262c', lake: '#0d3b3d', river: '#326e67', water: '#0b3336',
   },
   autumn: {
     background: '#17140d', reliefHue: 338, reliefSaturation: -0.28, reliefBrightness: 0.48,
-    territory: '#c08a4f', division: '#d0a46c',
+    division: '#d0a46c',
     ocean: '#10242a', lake: '#29353a', river: '#657b73', water: '#1b3034',
   },
   winter: {
     background: '#0b1418', reliefHue: 188, reliefSaturation: -0.62, reliefBrightness: 0.56,
-    territory: '#9ea9a0', division: '#b5c0b8',
+    division: '#b5c0b8',
     ocean: '#071d29', lake: '#17313d', river: '#6f9298', water: '#102936',
   },
 }
@@ -157,39 +160,8 @@ function applySeasonPalette(map: MapLibreMap, season: Season) {
     'river', palette.river,
     palette.water,
   ])
-  if (map.getLayer('tang-wash')) map.setPaintProperty('tang-wash', 'fill-color', palette.territory)
   if (map.getLayer('tang-region-line')) {
     map.setPaintProperty('tang-region-line', 'line-color', palette.division)
-  }
-}
-
-function boundaryFeature(): GeoJSON.Feature<GeoJSON.MultiPolygon> {
-  return {
-    type: 'Feature',
-    properties: {
-      name: '盛唐概念疆域',
-      year: activeSnapshot.year,
-      interpretation: 'artistic',
-    },
-    geometry: {
-      type: 'MultiPolygon',
-      coordinates: activeSnapshot.boundary ?? [],
-    },
-  }
-}
-
-function outsideTangFeature(): GeoJSON.Feature<GeoJSON.Polygon> {
-  const boundaryRing = activeSnapshot.boundary?.[0]?.[0] ?? []
-  return {
-    type: 'Feature',
-    properties: { name: '唐代疆域外遮罩' },
-    geometry: {
-      type: 'Polygon',
-      coordinates: [
-        [[-179, -80], [179, -80], [179, 80], [-179, 80], [-179, -80]],
-        boundaryRing,
-      ],
-    },
   }
 }
 
@@ -312,56 +284,6 @@ function poemCollection(poems: Poem[], selectedPoemId?: string): GeoJSON.Feature
 }
 
 function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: string) {
-  map.addSource('tang-boundary', {
-    type: 'geojson',
-    data: boundaryFeature(),
-  })
-  map.addLayer({
-    id: 'tang-wash',
-    type: 'fill',
-    source: 'tang-boundary',
-    paint: {
-      'fill-color': '#b79b5f',
-      'fill-opacity': 0.085,
-    },
-  })
-  map.addSource('outside-tang', {
-    type: 'geojson',
-    data: outsideTangFeature(),
-  })
-  map.addLayer({
-    id: 'outside-tang-mask',
-    type: 'fill',
-    source: 'outside-tang',
-    paint: {
-      'fill-color': '#07100c',
-      'fill-opacity': 0.94,
-      'fill-antialias': false,
-    },
-  })
-  map.addLayer({
-    id: 'tang-outer-glow',
-    type: 'line',
-    source: 'tang-boundary',
-    paint: {
-      'line-color': '#1a1208',
-      'line-opacity': 0.42,
-      'line-width': 5,
-      'line-blur': 5,
-    },
-  })
-  map.addLayer({
-    id: 'tang-line',
-    type: 'line',
-    source: 'tang-boundary',
-    paint: {
-      'line-color': '#e0c17c',
-      'line-opacity': 0.68,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.9, 6, 2.1],
-      'line-dasharray': [2.4, 1.8],
-    },
-  })
-
   map.addSource('tang-regions', {
     type: 'geojson',
     data: tangRegionDivisions,
@@ -429,7 +351,7 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: st
 async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poems: Poem[]) {
   await document.fonts.ready
   try {
-    if (!map.getSource('tang-boundary')) return
+    if (!map.getSource('poems')) return
   } catch {
     return
   }
@@ -723,7 +645,7 @@ export function VerseScene({
       zoom: compact ? 3.55 : 4.2,
       pitch: compact ? 34 : 38,
       bearing: -8,
-      maxBounds: [[68, 16], [131, 53]],
+      maxBounds: tangSurroundingsBounds,
       maxPitch: 62,
       minZoom: compact ? 3.3 : 4,
       maxZoom: 8,
@@ -860,6 +782,8 @@ export function VerseScene({
 
     map.once('style.load', () => {
       addHistoricalLayers(map, poems, selectedPoemRef.current.id)
+      containerRef.current?.setAttribute('data-map-scope', 'tang-surroundings')
+      containerRef.current?.setAttribute('data-boundary-rendered', 'false')
       containerRef.current?.setAttribute('data-poem-hit-ready', 'true')
       applySeasonPalette(map, seasonRef.current)
       if (containerRef.current) void addWebglLabelLayers(map, containerRef.current, poems)

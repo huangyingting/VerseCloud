@@ -148,14 +148,6 @@ export function App() {
         <small>公元</small>
       </aside>
 
-      <section className="map-legend" aria-label="地图说明">
-        <span><i className="legend-dot poem" />诗词地点</span>
-        <span><i className="legend-water sea" />海域 · 湖泊 · 江河分色</span>
-        <span><i className="legend-line division" />唐代概念道界</span>
-        <span><i className="legend-relief" />真实地形晕渲</span>
-        <span><i className="legend-area" />概念疆域</span>
-      </section>
-
       {entered && (
         <section className="season-switch" aria-label="四时场景">
           <span>四时</span>
@@ -176,13 +168,6 @@ export function App() {
         </section>
       )}
 
-      <div className="interaction-hint">
-        <span>拖动山河</span>
-        <span>右键旋转</span>
-        <span>滚轮远近</span>
-        <span>点击诗光</span>
-      </div>
-
       {entered && (
         <nav className="poem-access-list" aria-label="诗词地点快捷选择">
           {poems.map((poem) => (
@@ -197,11 +182,6 @@ export function App() {
           ))}
         </nav>
       )}
-
-      <footer className="release-note">
-        <span>山河卷 0.10.1</span>
-        <p>{activeSnapshot.note} · 地图 © OpenFreeMap / OpenStreetMap</p>
-      </footer>
 
       {!entered && (
         <section className="entry-gate" aria-labelledby="entry-title">
