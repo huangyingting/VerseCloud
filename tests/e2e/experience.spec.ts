@@ -18,13 +18,21 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
     timeout: 15_000,
   })
   await expect(page.locator('.geographic-poem-marker').first()).toBeVisible()
+  await expect(page.locator('.historical-region-label').first()).toBeVisible()
   await expect(page.locator('canvas')).toHaveCSS('height', '960px')
   await expect(page.getByRole('heading', { name: '春望' })).toBeVisible()
+  await expect(page.locator('.poem-card-effect.effect-petals-embers')).toBeVisible()
+  expect(await page.locator('.poem-effect i').count()).toBe(16)
   await expect(page.getByRole('button', { name: '静音' })).toBeEnabled()
+
+  await page.getByRole('button', { name: '秋', exact: true }).click()
+  await expect(page.locator('main')).toHaveClass(/season-autumn/)
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-season', 'autumn')
 
   await page.getByRole('button', { name: '后卷' }).click()
   await expect(page.getByRole('heading', { name: '早发白帝城' })).toBeVisible()
-  await expect(page.locator('.poem-effect.effect-river-flight')).toBeVisible()
+  await expect(page.locator('.geographic-map .poem-effect.effect-river-flight')).toBeVisible()
+  await expect(page.locator('.poem-card-effect.effect-river-flight')).toBeVisible()
   await page.getByText('考据', { exact: true }).click()
   await expect(page.getByText('行旅节点', { exact: true })).toBeVisible()
   expect(runtimeErrors).toEqual([])

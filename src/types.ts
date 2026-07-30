@@ -9,6 +9,8 @@ export type PlaceRelation =
 
 export type Confidence = 'high' | 'medium' | 'low'
 
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
+
 export type PoemVisualEffect =
   | 'petals-embers'
   | 'river-flight'

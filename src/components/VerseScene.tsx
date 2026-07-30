@@ -10,12 +10,14 @@ import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
 import { activeSnapshot } from '../data/mapSnapshots'
+import { tangMapLabels, tangRegionDivisions, type HistoricalMapLabel } from '../data/tangGeography'
 import { projectPoint } from '../lib/geo'
-import type { Poem, ScenePoint } from '../types'
+import type { Poem, ScenePoint, Season } from '../types'
 
 interface VerseSceneProps {
   poems: Poem[]
   selectedPoem: Poem
+  season: Season
   onSelectPoem: (poem: Poem) => void
   onFocusChange: (point: ScenePoint) => void
 }
@@ -86,7 +88,14 @@ const geographicStyle: StyleSpecification = {
       source: 'openmaptiles',
       'source-layer': 'water',
       paint: {
-        'fill-color': '#092629',
+        'fill-color': [
+          'match',
+          ['get', 'class'],
+          'ocean', '#071f25',
+          'lake', '#123239',
+          'river', '#1a4143',
+          '#0d2c31',
+        ],
         'fill-opacity': 0.9,
       },
     },
@@ -97,7 +106,12 @@ const geographicStyle: StyleSpecification = {
       'source-layer': 'waterway',
       filter: ['in', 'class', 'river', 'canal'],
       paint: {
-        'line-color': '#7baaa3',
+        'line-color': [
+          'match',
+          ['get', 'class'],
+          'canal', '#a4bba3',
+          '#73aaa5',
+        ],
         'line-opacity': 0.4,
         'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.4, 7, 1.8],
       },
@@ -112,6 +126,64 @@ const geographicStyle: StyleSpecification = {
     'fog-ground-blend': 0.6,
     'atmosphere-blend': 0.5,
   },
+}
+
+const seasonPalettes: Record<Season, {
+  background: string
+  reliefHue: number
+  reliefSaturation: number
+  reliefBrightness: number
+  hillHighlight: string
+  hillAccent: string
+  territory: string
+  division: string
+  ocean: string
+  lake: string
+  river: string
+  water: string
+}> = {
+  spring: {
+    background: '#0a1712', reliefHue: 12, reliefSaturation: -0.34, reliefBrightness: 0.5,
+    hillHighlight: '#c6b88a', hillAccent: '#536a58', territory: '#b89b66', division: '#c5af7d',
+    ocean: '#08232a', lake: '#14373b', river: '#2f6360', water: '#103137',
+  },
+  summer: {
+    background: '#071711', reliefHue: 32, reliefSaturation: -0.2, reliefBrightness: 0.45,
+    hillHighlight: '#aebd83', hillAccent: '#3d6751', territory: '#9f9c5d', division: '#a9b77a',
+    ocean: '#06262c', lake: '#0d3b3d', river: '#326e67', water: '#0b3336',
+  },
+  autumn: {
+    background: '#17140d', reliefHue: 338, reliefSaturation: -0.28, reliefBrightness: 0.48,
+    hillHighlight: '#c7a66f', hillAccent: '#71523b', territory: '#c08a4f', division: '#d0a46c',
+    ocean: '#10242a', lake: '#29353a', river: '#657b73', water: '#1b3034',
+  },
+  winter: {
+    background: '#0b1418', reliefHue: 188, reliefSaturation: -0.62, reliefBrightness: 0.56,
+    hillHighlight: '#c8d0c8', hillAccent: '#586b6c', territory: '#9ea9a0', division: '#b5c0b8',
+    ocean: '#071d29', lake: '#17313d', river: '#6f9298', water: '#102936',
+  },
+}
+
+function applySeasonPalette(map: MapLibreMap, season: Season) {
+  const palette = seasonPalettes[season]
+  map.setPaintProperty('night-paper', 'background-color', palette.background)
+  map.setPaintProperty('earth-relief', 'raster-hue-rotate', palette.reliefHue)
+  map.setPaintProperty('earth-relief', 'raster-saturation', palette.reliefSaturation)
+  map.setPaintProperty('earth-relief', 'raster-brightness-max', palette.reliefBrightness)
+  map.setPaintProperty('terrain-hillshade', 'hillshade-highlight-color', palette.hillHighlight)
+  map.setPaintProperty('terrain-hillshade', 'hillshade-accent-color', palette.hillAccent)
+  map.setPaintProperty('water', 'fill-color', [
+    'match',
+    ['get', 'class'],
+    'ocean', palette.ocean,
+    'lake', palette.lake,
+    'river', palette.river,
+    palette.water,
+  ])
+  if (map.getLayer('tang-wash')) map.setPaintProperty('tang-wash', 'fill-color', palette.territory)
+  if (map.getLayer('tang-region-line')) {
+    map.setPaintProperty('tang-region-line', 'line-color', palette.division)
+  }
 }
 
 function boundaryFeature(): GeoJSON.Feature<GeoJSON.MultiPolygon> {
@@ -187,6 +259,22 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[]) {
     },
   })
 
+  map.addSource('tang-regions', {
+    type: 'geojson',
+    data: tangRegionDivisions,
+  })
+  map.addLayer({
+    id: 'tang-region-line',
+    type: 'line',
+    source: 'tang-regions',
+    paint: {
+      'line-color': '#c5af7d',
+      'line-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.28, 6, 0.5],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.55, 6, 1.15],
+      'line-dasharray': [1.2, 2.4],
+    },
+  })
+
   map.addSource('poems', {
     type: 'geojson',
     data: poemCollection(poems),
@@ -216,6 +304,16 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[]) {
       'circle-pitch-alignment': 'map',
     },
   })
+}
+
+function createHistoricalLabelMarker(label: HistoricalMapLabel) {
+  const element = document.createElement('span')
+  element.className = `historical-label historical-${label.kind}-label`
+  if (label.major) element.classList.add('historical-major')
+  element.textContent = label.name
+  element.setAttribute('aria-hidden', 'true')
+  return new Marker({ element, anchor: 'center' })
+    .setLngLat([label.longitude, label.latitude])
 }
 
 function createPoemMarker(
@@ -297,6 +395,7 @@ function focusSelectedPoem(map: MapLibreMap, poem: Poem) {
 export function VerseScene({
   poems,
   selectedPoem,
+  season,
   onSelectPoem,
   onFocusChange,
 }: VerseSceneProps) {
@@ -308,6 +407,7 @@ export function VerseScene({
   const introInProgressRef = useRef(false)
   const pendingFocusRef = useRef<Poem | null>(null)
   const selectedPoemRef = useRef(selectedPoem)
+  const seasonRef = useRef(season)
   const onSelectRef = useRef(onSelectPoem)
   const onFocusRef = useRef(onFocusChange)
 
@@ -322,6 +422,13 @@ export function VerseScene({
   useEffect(() => {
     selectedPoemRef.current = selectedPoem
   }, [selectedPoem])
+
+  useEffect(() => {
+    seasonRef.current = season
+    const map = mapRef.current
+    containerRef.current?.setAttribute('data-season', season)
+    if (map?.isStyleLoaded()) applySeasonPalette(map, season)
+  }, [season])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -388,6 +495,11 @@ export function VerseScene({
     map.once('style.load', () => {
       map.setTerrain({ source: 'terrain', exaggeration: compact ? 1.25 : 1.5 })
       addHistoricalLayers(map, poems)
+      applySeasonPalette(map, seasonRef.current)
+      tangMapLabels.forEach((label) => {
+        const marker = createHistoricalLabelMarker(label).addTo(map)
+        markers.push(marker)
+      })
       poems.forEach((poem, index) => {
         const prominent = index === 0 || index === 1 || index === 2 || poem.id === 'cui-hao-huanghelou'
         const { button, marker } = createPoemMarker(

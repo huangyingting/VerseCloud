@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { activeSnapshot, snapshots } from './data/mapSnapshots'
 import {
   confidenceLabels,
@@ -11,9 +11,15 @@ import {
   soundscapeLabel,
   SoundscapeEngine,
 } from './lib/soundscape'
-import type { Poem, ScenePoint, SoundscapeMix } from './types'
+import type { Poem, ScenePoint, Season, SoundscapeMix } from './types'
 
 const initialFocus = { x: 0, y: 0 }
+const seasons: Array<{ id: Season; label: string; note: string }> = [
+  { id: 'spring', label: '春', note: '花色与新绿' },
+  { id: 'summer', label: '夏', note: '苍翠与深水' },
+  { id: 'autumn', label: '秋', note: '暖金与澄江' },
+  { id: 'winter', label: '冬', note: '霜白与寒水' },
+]
 const VerseScene = lazy(() =>
   import('./components/VerseScene').then((module) => ({ default: module.VerseScene })),
 )
@@ -24,6 +30,7 @@ export function App() {
   const [soundEnabled, setSoundEnabled] = useState(false)
   const [muted, setMuted] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [season, setSeason] = useState<Season>('spring')
   const [mobileView, setMobileView] = useState<'landscape' | 'poem'>('landscape')
   const [mix, setMix] = useState<SoundscapeMix>(() =>
     computeSoundscapeMix(initialFocus),
@@ -88,13 +95,14 @@ export function App() {
   const chineseNumbers = ['一', '二', '三', '四', '五', '六', '七', '八']
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell season-${season}`}>
       <div className="scene-layer" aria-hidden="true">
         {entered && (
           <Suspense fallback={<div className="scene-loading">山河入卷中…</div>}>
             <VerseScene
               poems={poems}
               selectedPoem={selectedPoem}
+              season={season}
               onSelectPoem={selectPoem}
               onFocusChange={handleFocusChange}
             />
@@ -103,6 +111,7 @@ export function App() {
       </div>
 
       <div className="vignette" aria-hidden="true" />
+      <div className="season-atmosphere" aria-hidden="true" />
       <div className="paper-grain" aria-hidden="true" />
 
       <header className="topbar">
@@ -162,10 +171,31 @@ export function App() {
 
       <section className="map-legend" aria-label="地图说明">
         <span><i className="legend-dot poem" />诗词地点</span>
-        <span><i className="legend-line river" />江河意象</span>
+        <span><i className="legend-water sea" />海域 · 湖泊 · 江河分色</span>
+        <span><i className="legend-line division" />唐代概念道界</span>
         <span><i className="legend-relief" />真实高程</span>
         <span><i className="legend-area" />概念疆域</span>
       </section>
+
+      {entered && (
+        <section className="season-switch" aria-label="四时场景">
+          <span>四时</span>
+          <div>
+            {seasons.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={season === item.id ? 'active' : ''}
+                aria-pressed={season === item.id}
+                title={item.note}
+                onClick={() => setSeason(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="interaction-hint">
         <span>拖动山河</span>
@@ -210,6 +240,21 @@ export function App() {
         >
           {detailsOpen ? '合卷' : '展卷'}
         </button>
+
+        <div
+          key={selectedPoem.id}
+          className={`poem-card-effect poem-effect effect-${selectedPoem.visualEffect}`}
+          style={{ '--effect-accent': selectedPoem.accent } as CSSProperties}
+          aria-hidden="true"
+        >
+          <span className="effect-core" />
+          {Array.from({ length: 8 }, (_, index) => (
+            <i
+              key={index}
+              style={{ '--particle-index': String(index) } as CSSProperties}
+            />
+          ))}
+        </div>
 
         <div className="poem-meta">
           <div className="poem-location">
@@ -268,7 +313,7 @@ export function App() {
       )}
 
       <footer className="release-note">
-        <span>山河卷 0.5</span>
+        <span>山河卷 0.6</span>
         <p>{activeSnapshot.note}</p>
       </footer>
 
