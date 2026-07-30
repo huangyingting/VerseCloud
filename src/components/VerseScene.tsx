@@ -1,4 +1,5 @@
 import {
+  LngLat,
   Map as MapLibreMap,
   Marker,
   setWorkerUrl,
@@ -574,6 +575,35 @@ function sizeVerticalVerseMarker(element: HTMLElement, poem: Poem) {
   // sub-pixel rounding while keeping every item inside the same visual column.
   element.style.setProperty('--map-poem-column-height', `${(columnHeight + 3).toFixed(2)}px`)
   element.dataset.sentenceCount = String(sentences.length)
+  delete element.dataset.baseWidth
+  delete element.dataset.baseHeight
+}
+
+function scaleVerticalVerseMarker(element: HTMLElement, map: MapLibreMap) {
+  const compact = window.matchMedia('(max-width: 680px)').matches
+  const zoomRange = Math.max(0.01, map.getMaxZoom() - map.getMinZoom())
+  const progress = Math.min(
+    1,
+    Math.max(0, (map.getZoom() - map.getMinZoom()) / zoomRange),
+  )
+  const desiredScale = 1 + progress * (compact ? 0.3 : 0.42)
+  const baseWidth = Number(element.dataset.baseWidth) || element.offsetWidth
+  const baseHeight = Number(element.dataset.baseHeight) || element.offsetHeight
+
+  if (baseWidth > 0 && baseHeight > 0) {
+    element.dataset.baseWidth = String(baseWidth)
+    element.dataset.baseHeight = String(baseHeight)
+  }
+
+  const widthLimit = (window.innerWidth - (compact ? 20 : 64)) / Math.max(1, baseWidth)
+  const heightLimit = (window.innerHeight * (compact ? 0.62 : 0.68)) / Math.max(1, baseHeight)
+  const scale = Math.max(1, Math.min(desiredScale, widthLimit, heightLimit))
+  const formattedScale = scale.toFixed(3)
+
+  if (element.dataset.zoomScale !== formattedScale) {
+    element.style.setProperty('--map-poem-zoom-scale', formattedScale)
+    element.dataset.zoomScale = formattedScale
+  }
 }
 
 function createVerticalVerseMarker(poem: Poem) {
@@ -676,6 +706,13 @@ export function VerseScene({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
     const compact = window.matchMedia('(max-width: 680px)').matches
+    type WheelFocusSession = {
+      startZoom: number
+      poemCenter: LngLat
+      targetCenter: LngLat
+    }
+    let wheelFocusSession: WheelFocusSession | null = null
+    let wheelFocusTimer = 0
     const map = new MapLibreMap({
       container: containerRef.current,
       style: geographicStyle,
@@ -694,6 +731,26 @@ export function VerseScene({
       pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
       attributionControl: false,
       fadeDuration: 0,
+      transformCameraUpdate: (next) => {
+        const session = wheelFocusSession
+        if (!session || next.zoom <= session.startZoom) return {}
+
+        const zoomDelta = next.zoom - session.startZoom
+        const offsetDecay = 2 ** -zoomDelta
+        const targetLng = session.poemCenter.lng
+          + (session.targetCenter.lng - session.poemCenter.lng) * offsetDecay
+        const targetLat = session.poemCenter.lat
+          + (session.targetCenter.lat - session.poemCenter.lat) * offsetDecay
+        const attraction = Math.min(0.985, 1 - Math.exp(-zoomDelta * 2.8))
+        const focusedCenter = new LngLat(
+          next.center.lng + (targetLng - next.center.lng) * attraction,
+          next.center.lat + (targetLat - next.center.lat) * attraction,
+        )
+
+        return {
+          center: focusedCenter,
+        }
+      },
       canvasContextAttributes: {
         antialias: false,
         powerPreference: 'high-performance',
@@ -719,7 +776,14 @@ export function VerseScene({
     }
     const updateVerseSizing = () => {
       const markerElement = selectedMarkerRef.current?.getElement()
-      if (markerElement) sizeVerticalVerseMarker(markerElement, selectedPoemRef.current)
+      if (markerElement) {
+        sizeVerticalVerseMarker(markerElement, selectedPoemRef.current)
+        scaleVerticalVerseMarker(markerElement, map)
+      }
+    }
+    const updateVerseScale = () => {
+      const markerElement = selectedMarkerRef.current?.getElement()
+      if (markerElement) scaleVerticalVerseMarker(markerElement, map)
     }
     const updatePoemScreenPositions = () => {
       const positions = Object.fromEntries(poems.map((poem) => {
@@ -739,6 +803,40 @@ export function VerseScene({
         focusFrame = 0
       })
     }
+    const finishWheelFocus = () => {
+      wheelFocusSession = null
+      if (wheelFocusTimer) window.clearTimeout(wheelFocusTimer)
+      wheelFocusTimer = 0
+      containerRef.current?.classList.remove('map-wheel-zooming')
+    }
+    const handleWheelFocus = (event: WheelEvent) => {
+      if (event.deltaY >= 0) {
+        finishWheelFocus()
+        return
+      }
+
+      const markerElement = selectedMarkerRef.current?.getElement()
+      if (!markerElement) return
+      if (!wheelFocusSession) {
+        const poem = selectedPoemRef.current
+        const poemCenter = new LngLat(poem.longitude, poem.latitude)
+        const poemPoint = map.project(poemCenter)
+        const markerScale = Number(markerElement.dataset.zoomScale) || 1
+        const markerHeight = markerElement.offsetHeight * markerScale
+        const poemOffset = Math.min(window.innerHeight * 0.3, markerHeight / 2 + 28)
+        wheelFocusSession = {
+          startZoom: map.getZoom(),
+          poemCenter,
+          targetCenter: map.unproject([poemPoint.x, poemPoint.y - poemOffset]),
+        }
+      }
+
+      containerRef.current?.classList.add('map-wheel-zooming')
+      if (wheelFocusTimer) window.clearTimeout(wheelFocusTimer)
+      wheelFocusTimer = window.setTimeout(finishWheelFocus, 420)
+    }
+    const canvas = map.getCanvas()
+    canvas.addEventListener('wheel', handleWheelFocus, { passive: true, capture: true })
 
     map.once('style.load', () => {
       addHistoricalLayers(map, poems, selectedPoemRef.current.id)
@@ -788,7 +886,11 @@ export function VerseScene({
       updatePoemScreenPositions()
       reportFocus(true)
     })
-    map.on('zoom', updateMarkerDensity)
+    map.on('zoom', () => {
+      updateMarkerDensity()
+      updateVerseScale()
+    })
+    map.on('zoomend', finishWheelFocus)
     map.on('resize', () => {
       updateVerseSizing()
       updatePoemScreenPositions()
@@ -796,6 +898,8 @@ export function VerseScene({
 
     return () => {
       if (focusFrame) window.cancelAnimationFrame(focusFrame)
+      finishWheelFocus()
+      canvas.removeEventListener('wheel', handleWheelFocus, true)
       compass.remove()
       selectedMarkerRef.current?.remove()
       effectMarkerRef.current?.remove()
@@ -820,6 +924,7 @@ export function VerseScene({
     selectedMarkerRef.current = createVerticalVerseMarker(selectedPoem)
       .setLngLat([selectedPoem.longitude, selectedPoem.latitude])
       .addTo(map)
+    scaleVerticalVerseMarker(selectedMarkerRef.current.getElement(), map)
 
     const source = map.getSource('poems') as GeoJSONSource | undefined
     if (source) source.setData(poemCollection(poems, selectedPoem.id))

@@ -166,7 +166,10 @@ a:focus-visible {
   backdrop-filter: blur(9px);
   pointer-events: none;
   font-family: var(--fangsong);
-  transition: opacity 160ms ease;
+  scale: var(--map-poem-zoom-scale, 1);
+  transform-origin: bottom center;
+  transition: opacity 160ms ease, scale 90ms linear;
+  will-change: scale;
 }
 
 .map-poem-sign h1,
@@ -301,7 +304,7 @@ a:focus-visible {
   animation-play-state: paused !important;
 }
 
-.map-moving .map-poem-sign {
+.map-moving:not(.map-wheel-zooming) .map-poem-sign {
   opacity: 0;
 }
 

@@ -37,12 +37,14 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
 
   const map = page.locator('.geographic-map')
   await expect(map).toHaveAttribute('data-intro-complete', 'true', { timeout: 8_000 })
+  await expect(map).not.toHaveClass(/map-moving/, { timeout: 2_000 })
+  await page.waitForTimeout(150)
+  const mapBounds = await map.boundingBox()
+  expect(mapBounds).not.toBeNull()
   const poemScreenPositions = JSON.parse(
     await map.getAttribute('data-poem-screen-positions') ?? '{}',
   ) as Record<string, { x: number; y: number }>
-  const mapBounds = await map.boundingBox()
   const jiandePoint = poemScreenPositions['meng-haoran-jiande']
-  expect(mapBounds).not.toBeNull()
   expect(jiandePoint).toBeTruthy()
   await page.mouse.click(
     (mapBounds?.x ?? 0) + jiandePoint.x,
@@ -52,6 +54,48 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.getByText('移舟泊烟渚，', { exact: true })).toBeVisible()
   await expect(page.getByText('日暮客愁新。', { exact: true })).toBeVisible()
   await expect(page.locator('.map-poem-sign')).toHaveAttribute('data-sentence-count', '4')
+
+  await expect(map).not.toHaveClass(/map-moving/, { timeout: 3_000 })
+  const viewportCenter = {
+    x: (mapBounds?.x ?? 0) + (mapBounds?.width ?? 0) / 2,
+    y: (mapBounds?.y ?? 0) + (mapBounds?.height ?? 0) / 2,
+  }
+  await page.mouse.move(viewportCenter.x, viewportCenter.y)
+  await page.mouse.down()
+  await page.mouse.move(viewportCenter.x + 220, viewportCenter.y, { steps: 8 })
+  await page.mouse.up()
+  await expect(map).not.toHaveClass(/map-moving/, { timeout: 2_000 })
+
+  const poemSign = page.locator('.map-poem-sign')
+  const initialSignBounds = await poemSign.boundingBox()
+  const initialScale = Number(await poemSign.getAttribute('data-zoom-scale'))
+  expect(initialSignBounds).not.toBeNull()
+  await map.evaluate((element) => {
+    const observeWheelZoom = new MutationObserver(() => {
+      if (element.classList.contains('map-wheel-zooming')) {
+        const sign = element.querySelector<HTMLElement>('.map-poem-sign')
+        element.setAttribute(
+          'data-wheel-sign-visible',
+          sign && getComputedStyle(sign).opacity !== '0' ? 'true' : 'false',
+        )
+      }
+    })
+    observeWheelZoom.observe(element, { attributes: true, attributeFilter: ['class'] })
+  })
+  await page.mouse.move(viewportCenter.x, viewportCenter.y)
+  await page.mouse.wheel(0, -900)
+  await expect(map).toHaveAttribute('data-wheel-sign-visible', 'true')
+  await expect(map).not.toHaveClass(/map-wheel-zooming/, { timeout: 2_000 })
+
+  const focusedSignBounds = await poemSign.boundingBox()
+  const focusedScale = Number(await poemSign.getAttribute('data-zoom-scale'))
+  expect(focusedSignBounds).not.toBeNull()
+  expect(focusedScale).toBeGreaterThan(initialScale)
+  const distanceToCenter = (bounds: NonNullable<typeof initialSignBounds>) => Math.hypot(
+    bounds.x + bounds.width / 2 - viewportCenter.x,
+    bounds.y + bounds.height / 2 - viewportCenter.y,
+  )
+  expect(distanceToCenter(focusedSignBounds!)).toBeLessThan(distanceToCenter(initialSignBounds!))
 
   await page.getByRole('button', { name: '秋', exact: true }).click()
   await expect(page.locator('main')).toHaveClass(/season-autumn/)
@@ -106,5 +150,22 @@ test('keeps the WebGL scene alive on a narrow mobile viewport', async ({ page })
   await expect(page.locator('.map-poem-lines p')).toHaveCount(8)
   await expect(page.locator('.map-poem-lines p').first()).toHaveCSS('white-space', 'nowrap')
   await expect(page.locator('.poem-card')).toHaveCount(0)
+
+  const mobileMap = page.locator('.geographic-map')
+  const mobileSign = page.locator('.map-poem-sign')
+  await expect(mobileMap).toHaveAttribute('data-intro-complete', 'true', { timeout: 8_000 })
+  const mobileInitialScale = Number(await mobileSign.getAttribute('data-zoom-scale'))
+  await page.mouse.move(195, 422)
+  await page.mouse.wheel(0, -900)
+  await expect(mobileMap).not.toHaveClass(/map-wheel-zooming/, { timeout: 2_000 })
+  const mobileFocusedScale = Number(await mobileSign.getAttribute('data-zoom-scale'))
+  const mobileSignBounds = await mobileSign.boundingBox()
+  expect(mobileFocusedScale).toBeGreaterThan(mobileInitialScale)
+  expect(mobileFocusedScale).toBeLessThanOrEqual(1.3)
+  expect(mobileSignBounds).not.toBeNull()
+  expect(mobileSignBounds!.x).toBeGreaterThanOrEqual(0)
+  expect(mobileSignBounds!.y).toBeGreaterThanOrEqual(0)
+  expect(mobileSignBounds!.x + mobileSignBounds!.width).toBeLessThanOrEqual(390)
+  expect(mobileSignBounds!.y + mobileSignBounds!.height).toBeLessThanOrEqual(844)
   expect(contextLosses).toEqual([])
 })
