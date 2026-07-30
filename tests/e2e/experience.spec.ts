@@ -60,18 +60,15 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
     x: (mapBounds?.x ?? 0) + (mapBounds?.width ?? 0) / 2,
     y: (mapBounds?.y ?? 0) + (mapBounds?.height ?? 0) / 2,
   }
-  await page.mouse.move(viewportCenter.x, viewportCenter.y)
-  await page.mouse.down()
-  await page.mouse.move(viewportCenter.x + 220, viewportCenter.y, { steps: 8 })
-  await page.mouse.up()
-  await expect(map).not.toHaveClass(/map-moving/, { timeout: 2_000 })
+  // MapLibre updates DOM markers just after its public moveend listeners run.
+  await page.waitForTimeout(100)
 
   const poemSign = page.locator('.map-poem-sign')
   const initialSignBounds = await poemSign.boundingBox()
   const initialScale = Number(await poemSign.getAttribute('data-zoom-scale'))
   expect(initialSignBounds).not.toBeNull()
   await map.evaluate((element) => {
-    const observeWheelZoom = new MutationObserver(() => {
+    const recordWheelVisibility = () => {
       if (element.classList.contains('map-wheel-zooming')) {
         const sign = element.querySelector<HTMLElement>('.map-poem-sign')
         element.setAttribute(
@@ -79,8 +76,10 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
           sign && getComputedStyle(sign).opacity !== '0' ? 'true' : 'false',
         )
       }
-    })
+    }
+    const observeWheelZoom = new MutationObserver(recordWheelVisibility)
     observeWheelZoom.observe(element, { attributes: true, attributeFilter: ['class'] })
+    element.addEventListener('wheel', recordWheelVisibility, { capture: true })
   })
   await page.mouse.move(viewportCenter.x, viewportCenter.y)
   await page.mouse.wheel(0, -900)
@@ -96,6 +95,24 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
     bounds.y + bounds.height / 2 - viewportCenter.y,
   )
   expect(distanceToCenter(focusedSignBounds!)).toBeLessThan(distanceToCenter(initialSignBounds!))
+
+  await map.evaluate((element) => element.removeAttribute('data-wheel-sign-visible'))
+  await page.mouse.wheel(0, 900)
+  await expect(map).toHaveAttribute('data-wheel-sign-visible', 'true')
+  await expect(map).not.toHaveClass(/map-wheel-zooming/, { timeout: 2_000 })
+  await page.waitForTimeout(150)
+  const restoredSignBounds = await poemSign.boundingBox()
+  const restoredScale = Number(await poemSign.getAttribute('data-zoom-scale'))
+  expect(restoredSignBounds).not.toBeNull()
+  expect(restoredScale).toBeLessThan(focusedScale)
+  const centerDelta = (
+    first: NonNullable<typeof initialSignBounds>,
+    second: NonNullable<typeof initialSignBounds>,
+  ) => Math.hypot(
+    first.x + first.width / 2 - second.x - second.width / 2,
+    first.y + first.height / 2 - second.y - second.height / 2,
+  )
+  expect(centerDelta(restoredSignBounds!, initialSignBounds!)).toBeLessThan(12)
 
   await page.getByRole('button', { name: '秋', exact: true }).click()
   await expect(page.locator('main')).toHaveClass(/season-autumn/)
