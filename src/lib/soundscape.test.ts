@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { poems } from '../data/poems'
 import { projectPoint } from './geo'
-import { computeSoundscapeMix, soundscapeLabel } from './soundscape'
+import {
+  computeSoundscapeMix,
+  poemSoundscapeLabel,
+  soundscapeLabel,
+} from './soundscape'
 
 describe('computeSoundscapeMix', () => {
   it('normalizes the three regional weights', () => {
@@ -17,5 +22,10 @@ describe('computeSoundscapeMix', () => {
   it('makes the frontier layer dominant in the western corridor', () => {
     const mix = computeSoundscapeMix(projectPoint(91.1, 40.2))
     expect(mix.dominant).toBe('frontier')
+  })
+
+  it('assigns every current poem a distinct background score', () => {
+    const labels = poems.map(poemSoundscapeLabel)
+    expect(new Set(labels).size).toBe(poems.length)
   })
 })

@@ -37,6 +37,10 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   expect(await page.locator('.poem-effect i').count()).toBe(8)
   await expect(page.locator('.poem-card')).toHaveCount(0)
   await expect(page.getByRole('button', { name: '静音' })).toBeEnabled()
+  await expect(page.locator('.soundscape-status')).toHaveAttribute(
+    'data-poem-soundscape',
+    '残春烽火',
+  )
   await expect(page.locator('.maplibregl-ctrl-attrib')).toHaveCount(0)
 
   const map = page.locator('.geographic-map')
@@ -60,6 +64,10 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.locator('.map-poem-sign')).toHaveAttribute('data-sentence-count', '4')
   await expect(page.locator('.era-year')).toHaveText('约730')
   await expect(page.locator('.era-panel p')).toHaveText('约开元十八年')
+  await expect(page.locator('.soundscape-status')).toHaveAttribute(
+    'data-poem-soundscape',
+    '烟渚近月',
+  )
 
   await expect(map).not.toHaveClass(/map-moving/, { timeout: 3_000 })
   const viewportCenter = {
@@ -133,6 +141,10 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.locator('.map-poem-sign')).toHaveAttribute('data-sentence-count', '4')
   await expect(page.locator('.era-year')).toHaveText('759')
   await expect(page.locator('.era-panel p')).toHaveText('乾元二年')
+  await expect(page.locator('.soundscape-status')).toHaveAttribute(
+    'data-poem-soundscape',
+    '彩云轻舟',
+  )
   await expect(page.locator('.geographic-map .poem-effect.effect-river-flight')).toBeVisible()
   await expect(page.locator('.poem-card')).toHaveCount(0)
 

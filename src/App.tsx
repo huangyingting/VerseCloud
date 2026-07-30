@@ -11,9 +11,11 @@ import { snapshots } from './data/mapSnapshots'
 import { defaultPoem, poems } from './data/poems'
 import {
   computeSoundscapeMix,
+  poemSoundscapeLabel,
   soundscapeLabel,
   SoundscapeEngine,
 } from './lib/soundscape'
+import { projectPoint } from './lib/geo'
 import type { Poem, ScenePoint, Season, SoundscapeMix } from './types'
 
 const initialFocus = { x: 0, y: 0 }
@@ -48,7 +50,10 @@ export function App() {
     setEntered(true)
     if (!engine.current) engine.current = new SoundscapeEngine()
     try {
-      await engine.current.start(focusPoint.current)
+      const startingPoint = projectPoint(selectedPoem.longitude, selectedPoem.latitude)
+      focusPoint.current = startingPoint
+      setMix(computeSoundscapeMix(startingPoint))
+      await engine.current.start(startingPoint, selectedPoem)
       setSoundEnabled(true)
     } catch (error) {
       console.warn('Soundscape could not start; continuing silently.', error)
@@ -71,6 +76,11 @@ export function App() {
 
   const selectPoem = useCallback((poem: Poem) => {
     setSelectedPoem(poem)
+    const poemPoint = projectPoint(poem.longitude, poem.latitude)
+    focusPoint.current = poemPoint
+    const nextMix = engine.current?.update(poemPoint) ?? computeSoundscapeMix(poemPoint)
+    setMix(nextMix)
+    engine.current?.transitionToPoem(poem)
     engine.current?.playPoemCue(poem)
   }, [])
 
@@ -131,11 +141,17 @@ export function App() {
         </nav>
 
         <div className="top-actions">
-          <div className="soundscape-status" aria-live="polite">
+          <div
+            className="soundscape-status"
+            aria-live="polite"
+            data-poem-soundscape={poemSoundscapeLabel(selectedPoem)}
+          >
             <span className={soundEnabled && !muted ? 'sound-dot playing' : 'sound-dot'} />
             <span>
               <small>此刻音景</small>
-              {soundEnabled ? soundscapeLabel(mix) : '静音游历'}
+              {soundEnabled
+                ? `${soundscapeLabel(mix)} · ${poemSoundscapeLabel(selectedPoem)}`
+                : '静音游历'}
             </span>
           </div>
           <button
