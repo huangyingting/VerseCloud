@@ -1,12 +1,16 @@
-import { Billboard, Line, MapControls, Text } from '@react-three/drei'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import * as THREE from 'three'
-import { feature } from 'topojson-client'
-import atlas from 'world-atlas/countries-110m.json'
-import type { Poem, ScenePoint } from '../types'
+import {
+  AttributionControl,
+  Map as MapLibreMap,
+  Marker,
+  NavigationControl,
+  type GeoJSONSource,
+  type StyleSpecification,
+} from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
+import { useEffect, useRef } from 'react'
 import { activeSnapshot } from '../data/mapSnapshots'
-import { geometryToShapes, lineToScenePoints, projectPoint } from '../lib/geo'
+import { projectPoint } from '../lib/geo'
+import type { Poem, ScenePoint } from '../types'
 
 interface VerseSceneProps {
   poems: Poem[]
@@ -15,448 +19,333 @@ interface VerseSceneProps {
   onFocusChange: (point: ScenePoint) => void
 }
 
-interface AtlasFeature {
-  id?: string | number
-  geometry: {
-    type: string
-    coordinates: unknown
-  } | null
+const geographicStyle: StyleSpecification = {
+  version: 8,
+  name: 'VerseCloud geographic relief',
+  sources: {
+    shadedRelief: {
+      type: 'raster',
+      tiles: ['https://tiles.openfreemap.org/natural_earth/ne2sr/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      maxzoom: 6,
+      attribution: 'Natural Earth · OpenFreeMap',
+    },
+    openmaptiles: {
+      type: 'vector',
+      url: 'https://tiles.openfreemap.org/planet',
+      attribution: '© OpenFreeMap · © OpenStreetMap contributors',
+    },
+    terrain: {
+      type: 'raster-dem',
+      tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      maxzoom: 15,
+      encoding: 'terrarium',
+      attribution: 'Terrain Tiles © Mapzen · elevation data sources include NASA and USGS',
+    },
+  },
+  layers: [
+    {
+      id: 'night-paper',
+      type: 'background',
+      paint: { 'background-color': '#09130f' },
+    },
+    {
+      id: 'earth-relief',
+      type: 'raster',
+      source: 'shadedRelief',
+      paint: {
+        'raster-opacity': 0.78,
+        'raster-saturation': -0.72,
+        'raster-contrast': 0.32,
+        'raster-brightness-min': 0.05,
+        'raster-brightness-max': 0.42,
+        'raster-hue-rotate': 28,
+      },
+    },
+    {
+      id: 'terrain-hillshade',
+      type: 'hillshade',
+      source: 'terrain',
+      paint: {
+        'hillshade-shadow-color': '#040a07',
+        'hillshade-highlight-color': '#b5a37b',
+        'hillshade-accent-color': '#4f5e4c',
+        'hillshade-exaggeration': 0.72,
+        'hillshade-illumination-direction': 318,
+      },
+    },
+    {
+      id: 'water',
+      type: 'fill',
+      source: 'openmaptiles',
+      'source-layer': 'water',
+      paint: {
+        'fill-color': '#0b292b',
+        'fill-opacity': 0.82,
+      },
+    },
+    {
+      id: 'rivers',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'waterway',
+      filter: ['in', 'class', 'river', 'canal'],
+      paint: {
+        'line-color': '#6ba2a0',
+        'line-opacity': 0.58,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.4, 7, 1.8],
+      },
+    },
+  ],
+  sky: {
+    'sky-color': '#07110d',
+    'horizon-color': '#2d3b32',
+    'fog-color': '#101d17',
+    'sky-horizon-blend': 0.72,
+    'horizon-fog-blend': 0.42,
+    'fog-ground-blend': 0.6,
+    'atmosphere-blend': 0.5,
+  },
 }
 
-const nearbyCountryIds = new Set([
-  '004',
-  '104',
-  '116',
-  '144',
-  '156',
-  '356',
-  '392',
-  '408',
-  '410',
-  '418',
-  '496',
-  '524',
-  '586',
-  '704',
-])
+function boundaryFeature(): GeoJSON.Feature<GeoJSON.MultiPolygon> {
+  return {
+    type: 'Feature',
+    properties: {
+      name: '盛唐概念疆域',
+      year: activeSnapshot.year,
+      interpretation: 'artistic',
+    },
+    geometry: {
+      type: 'MultiPolygon',
+      coordinates: activeSnapshot.boundary ?? [],
+    },
+  }
+}
 
-function getCountryFeatures() {
-  const topology = atlas as { objects: { countries: unknown } }
-  const collection = feature(
-    atlas as never,
-    topology.objects.countries as never,
-  ) as unknown as { features: AtlasFeature[] }
+function poemCollection(poems: Poem[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
+  return {
+    type: 'FeatureCollection',
+    features: poems.map((poem) => ({
+      type: 'Feature',
+      id: poem.id,
+      properties: {
+        id: poem.id,
+        title: poem.title,
+        author: poem.author,
+        placeName: poem.placeName,
+        accent: poem.accent,
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: [poem.longitude, poem.latitude],
+      },
+    })),
+  }
+}
 
-  return collection.features.filter((item) => {
-    const id = String(item.id ?? '').padStart(3, '0')
-    return nearbyCountryIds.has(id) && item.geometry
+function addHistoricalLayers(map: MapLibreMap, poems: Poem[]) {
+  map.addSource('tang-boundary', {
+    type: 'geojson',
+    data: boundaryFeature(),
+  })
+  map.addLayer({
+    id: 'tang-wash',
+    type: 'fill',
+    source: 'tang-boundary',
+    paint: {
+      'fill-color': '#b79b5f',
+      'fill-opacity': 0.16,
+    },
+  })
+  map.addLayer({
+    id: 'tang-outer-glow',
+    type: 'line',
+    source: 'tang-boundary',
+    paint: {
+      'line-color': '#1a1208',
+      'line-opacity': 0.72,
+      'line-width': 6,
+      'line-blur': 4,
+    },
+  })
+  map.addLayer({
+    id: 'tang-line',
+    type: 'line',
+    source: 'tang-boundary',
+    paint: {
+      'line-color': '#e0c17c',
+      'line-opacity': 0.84,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1.2, 6, 2.8],
+      'line-dasharray': [2, 1.3],
+    },
+  })
+
+  map.addSource('poems', {
+    type: 'geojson',
+    data: poemCollection(poems),
+  })
+  map.addLayer({
+    id: 'poem-halo',
+    type: 'circle',
+    source: 'poems',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 8, 7, 14],
+      'circle-color': ['get', 'accent'],
+      'circle-opacity': 0.12,
+      'circle-blur': 0.65,
+      'circle-pitch-alignment': 'map',
+    },
+  })
+  map.addLayer({
+    id: 'poem-points',
+    type: 'circle',
+    source: 'poems',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 3.5, 7, 7],
+      'circle-color': ['get', 'accent'],
+      'circle-stroke-color': '#f4e7c9',
+      'circle-stroke-width': 1.2,
+      'circle-opacity': 0.94,
+      'circle-pitch-alignment': 'map',
+    },
   })
 }
 
-function Parchment() {
-  return (
-    <group>
-      <mesh position={[0, 0, -0.18]} receiveShadow>
-        <planeGeometry args={[22, 15, 1, 1]} />
-        <meshBasicMaterial color="#17231e" />
-      </mesh>
-      <mesh position={[0, 0, -0.2]}>
-        <ringGeometry args={[7.1, 10.9, 96]} />
-        <meshBasicMaterial color="#0c1512" transparent opacity={0.58} />
-      </mesh>
-      {[-5.5, -2.7, 2.5, 5.1].map((x) => (
-        <Line
-          key={x}
-          points={[
-            [x, -7.2, -0.16],
-            [x + 0.35, 7.2, -0.16],
-          ]}
-          color="#9b8f6f"
-          transparent
-          opacity={0.035}
-          lineWidth={0.5}
-        />
-      ))}
-    </group>
-  )
-}
+function createPoemMarker(poem: Poem, onSelect: (poem: Poem) => void) {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'geographic-poem-marker'
+  button.setAttribute('aria-label', `查看${poem.author}《${poem.title}》`)
+  button.style.setProperty('--poem-accent', poem.accent)
 
-function GeographicBase() {
-  const geometries = useMemo(() => {
-    return getCountryFeatures().flatMap((country, countryIndex) =>
-      country.geometry
-        ? geometryToShapes(country.geometry).map((shape, shapeIndex) => ({
-            id: `${countryIndex}-${shapeIndex}`,
-            geometry: new THREE.ExtrudeGeometry(shape, {
-              depth: 0.035,
-              bevelEnabled: false,
-              curveSegments: 1,
-            }),
-          }))
-        : [],
-    )
-  }, [])
-
-  useEffect(
-    () => () => geometries.forEach(({ geometry }) => geometry.dispose()),
-    [geometries],
-  )
-
-  return (
-    <group position={[0, 0, -0.09]}>
-      {geometries.map(({ id, geometry }) => (
-        <mesh key={id} geometry={geometry} receiveShadow>
-          <meshStandardMaterial
-            color="#334039"
-            roughness={0.92}
-            metalness={0.04}
-            transparent
-            opacity={0.94}
-          />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-function PrototypeBoundary() {
-  const geometries = useMemo(() => {
-    if (!activeSnapshot.boundary) return []
-    return activeSnapshot.boundary.flatMap((polygon, index) => {
-      const shapes = geometryToShapes({ type: 'Polygon', coordinates: polygon })
-      return shapes.map((shape, shapeIndex) => ({
-        id: `${index}-${shapeIndex}`,
-        geometry: new THREE.ExtrudeGeometry(shape, {
-          depth: 0.13,
-          bevelEnabled: true,
-          bevelSize: 0.025,
-          bevelThickness: 0.018,
-          bevelSegments: 2,
-          curveSegments: 1,
-        }),
-      }))
-    })
-  }, [])
-
-  useEffect(
-    () => () => geometries.forEach(({ geometry }) => geometry.dispose()),
-    [geometries],
-  )
-
-  return (
-    <group position={[0, 0, 0]}>
-      {geometries.map(({ id, geometry }) => (
-        <mesh key={id} geometry={geometry} castShadow receiveShadow>
-          <meshStandardMaterial
-            color="#776f50"
-            emissive="#5c553c"
-            emissiveIntensity={0.12}
-            roughness={0.86}
-            transparent
-            opacity={0.7}
-          />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-const yellowRiver = [
-  [96.1, 35.4],
-  [101.4, 36.3],
-  [106.1, 37.3],
-  [110.2, 40.2],
-  [111.1, 35.2],
-  [114.1, 34.8],
-  [118.2, 37.1],
-]
-
-const yangtzeRiver = [
-  [91.8, 33.1],
-  [99.1, 30.7],
-  [104.1, 29.9],
-  [108.6, 30.5],
-  [114.3, 30.5],
-  [118.8, 31.5],
-  [121.4, 31.3],
-]
-
-function Rivers() {
-  return (
-    <group>
-      <Line
-        points={lineToScenePoints(yellowRiver)}
-        color="#c1ad77"
-        transparent
-        opacity={0.6}
-        lineWidth={1.25}
-      />
-      <Line
-        points={lineToScenePoints(yangtzeRiver)}
-        color="#73a5a1"
-        transparent
-        opacity={0.75}
-        lineWidth={1.45}
-      />
-    </group>
-  )
-}
-
-function PoemMarker({
-  poem,
-  selected,
-  onSelect,
-}: {
-  poem: Poem
-  selected: boolean
-  onSelect: () => void
-}) {
-  const group = useRef<THREE.Group>(null)
-  const [hovered, setHovered] = useState(false)
-  const { x, y } = projectPoint(poem.longitude, poem.latitude)
-
-  useFrame((state) => {
-    if (!group.current) return
-    const pulse = Math.sin(state.clock.elapsedTime * 2.2 + x) * 0.045
-    group.current.position.y = (selected ? 0.34 : 0.22) + pulse
+  const stem = document.createElement('span')
+  stem.className = 'marker-stem'
+  const label = document.createElement('span')
+  label.className = 'marker-place-label'
+  label.textContent = poem.placeName
+  button.append(stem, label)
+  button.addEventListener('click', (event) => {
+    event.stopPropagation()
+    onSelect(poem)
   })
 
-  return (
-    <group ref={group} position={[x, 0.22, -y]}>
-      <Line
-        points={[
-          [0, -0.12, 0],
-          [0, selected ? 0.58 : 0.34, 0],
-        ]}
-        color={poem.accent}
-        transparent
-        opacity={selected ? 0.9 : 0.42}
-        lineWidth={selected ? 1.5 : 0.8}
-      />
-      <mesh
-        onClick={(event) => {
-          event.stopPropagation()
-          onSelect()
-        }}
-        onPointerOver={(event) => {
-          event.stopPropagation()
-          setHovered(true)
-          document.body.style.cursor = 'pointer'
-        }}
-        onPointerOut={() => {
-          setHovered(false)
-          document.body.style.cursor = 'default'
-        }}
-        scale={selected ? 1.35 : hovered ? 1.15 : 1}
-      >
-        <sphereGeometry args={[0.11, 20, 20]} />
-        <meshStandardMaterial
-          color={poem.accent}
-          emissive={poem.accent}
-          emissiveIntensity={selected ? 1.8 : hovered ? 1.25 : 0.72}
-          roughness={0.38}
-        />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} scale={selected ? 1.45 : 1}>
-        <ringGeometry args={[0.17, 0.185, 36]} />
-        <meshBasicMaterial
-          color={poem.accent}
-          transparent
-          opacity={selected ? 0.72 : 0.26}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      {(selected || hovered) && (
-        <Billboard position={[0, selected ? 0.92 : 0.62, 0]} follow>
-          <Text
-            fontSize={selected ? 0.29 : 0.23}
-            color="#f3ead5"
-            anchorX="center"
-            anchorY="bottom"
-            outlineWidth={0.018}
-            outlineColor="#14201b"
-            letterSpacing={0.08}
-          >
-            {poem.title}
-          </Text>
-          <Text
-            position={[0, -0.08, 0]}
-            fontSize={0.14}
-            color="#b9ae94"
-            anchorX="center"
-            anchorY="top"
-            outlineWidth={0.012}
-            outlineColor="#14201b"
-          >
-            {poem.author} · {poem.placeName}
-          </Text>
-        </Billboard>
-      )}
-    </group>
-  )
+  return { button, marker: new Marker({ element: button, anchor: 'bottom' }) }
 }
 
-function FloatingVerse({ poem }: { poem: Poem }) {
-  const group = useRef<THREE.Group>(null)
-  const { x, y } = projectPoint(poem.longitude, poem.latitude)
+function createVerticalVerseMarker(poem: Poem) {
+  const element = document.createElement('div')
+  element.className = 'map-vertical-verse'
+  element.setAttribute('aria-hidden', 'true')
 
-  useFrame((state) => {
-    if (!group.current) return
-    group.current.position.y = 1.45 + Math.sin(state.clock.elapsedTime * 0.65) * 0.08
+  const heading = document.createElement('strong')
+  heading.textContent = poem.title
+  const author = document.createElement('span')
+  author.textContent = poem.author
+  const verse = document.createElement('div')
+  verse.className = 'map-vertical-lines'
+  poem.lines.slice(0, 4).forEach((line) => {
+    const column = document.createElement('p')
+    column.textContent = line
+    verse.append(column)
   })
-
-  return (
-    <group ref={group} position={[x, 1.45, -y]}>
-      <Billboard follow>
-        <Text
-          maxWidth={5.4}
-          fontSize={0.22}
-          lineHeight={1.75}
-          textAlign="center"
-          anchorX="center"
-          anchorY="bottom"
-          color="#f5ead1"
-          outlineWidth={0.016}
-          outlineColor="#101814"
-          fillOpacity={0.94}
-        >
-          {poem.lines.join('\n')}
-        </Text>
-      </Billboard>
-    </group>
-  )
+  element.append(heading, author, verse)
+  return new Marker({ element, anchor: 'bottom-left', offset: [18, -18] })
 }
 
-function InkMotes() {
-  const points = useRef<THREE.Points>(null)
-  const positions = useMemo(() => {
-    let seed = 742
-    const random = () => {
-      seed = (seed * 16807) % 2147483647
-      return (seed - 1) / 2147483646
-    }
-    return Float32Array.from(
-      Array.from({ length: 420 }, () => [
-        (random() - 0.5) * 21,
-        (random() - 0.5) * 14,
-        0.15 + random() * 2.1,
-      ]).flat(),
-    )
-  }, [])
-
-  useFrame((state) => {
-    if (!points.current) return
-    points.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.08) * 0.015
-  })
-
-  return (
-    <points ref={points}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        color="#d8c89d"
-        size={0.025}
-        transparent
-        opacity={0.22}
-        sizeAttenuation
-        depthWrite={false}
-      />
-    </points>
-  )
-}
-
-function FocusReporter({ onFocusChange }: { onFocusChange: (point: ScenePoint) => void }) {
-  const raycaster = useMemo(() => new THREE.Raycaster(), [])
-  const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
-  const center = useMemo(() => new THREE.Vector2(0, 0), [])
-  const intersection = useMemo(() => new THREE.Vector3(), [])
-  const lastUpdate = useRef(0)
-
-  useFrame(({ camera, clock }) => {
-    if (clock.elapsedTime - lastUpdate.current < 0.22) return
-    lastUpdate.current = clock.elapsedTime
-    raycaster.setFromCamera(center, camera)
-    if (raycaster.ray.intersectPlane(plane, intersection)) {
-      onFocusChange({ x: intersection.x, y: -intersection.z })
-    }
-  })
-
-  return null
-}
-
-function World({
+export function VerseScene({
   poems,
   selectedPoem,
   onSelectPoem,
   onFocusChange,
 }: VerseSceneProps) {
-  return (
-    <>
-      <color attach="background" args={['#0e1713']} />
-      <fog attach="fog" args={['#0e1713', 12, 26]} />
-      <ambientLight intensity={1.15} color="#bfd0bc" />
-      <directionalLight
-        castShadow
-        color="#f2d9a7"
-        intensity={2.2}
-        position={[-5, 11, -4]}
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
-      <pointLight color="#79a8a0" intensity={4.8} distance={17} position={[6, 4, 3]} />
+  const containerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<MapLibreMap | null>(null)
+  const selectedMarkerRef = useRef<Marker | null>(null)
+  const onSelectRef = useRef(onSelectPoem)
+  const onFocusRef = useRef(onFocusChange)
 
-      <group rotation={[-Math.PI / 2, 0, 0]}>
-        <Parchment />
-        <GeographicBase />
-        <PrototypeBoundary />
-        <Rivers />
-        <InkMotes />
-      </group>
-      {poems.map((poem) => (
-        <PoemMarker
-          key={poem.id}
-          poem={poem}
-          selected={poem.id === selectedPoem.id}
-          onSelect={() => onSelectPoem(poem)}
-        />
-      ))}
-      <FloatingVerse poem={selectedPoem} />
-      <FocusReporter onFocusChange={onFocusChange} />
-      <MapControls
-        makeDefault
-        enableDamping
-        dampingFactor={0.08}
-        minDistance={5.6}
-        maxDistance={27}
-        maxPolarAngle={Math.PI * 0.46}
-        minPolarAngle={Math.PI * 0.12}
-        target={[0, 0, 0]}
-      />
-    </>
-  )
-}
+  useEffect(() => {
+    onSelectRef.current = onSelectPoem
+  }, [onSelectPoem])
 
-export function VerseScene(props: VerseSceneProps) {
-  const compactViewport = window.matchMedia('(max-width: 680px)').matches
+  useEffect(() => {
+    onFocusRef.current = onFocusChange
+  }, [onFocusChange])
 
-  return (
-    <Canvas
-      shadows
-      dpr={[1, 1.7]}
-      camera={{
-        position: compactViewport ? [0, 13.5, 14.5] : [0, 11.5, 10.8],
-        fov: compactViewport ? 48 : 43,
-        near: 0.1,
-        far: 80,
-      }}
-      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
-      onCreated={({ gl }) => {
-        gl.setClearColor(new THREE.Color('#0e1713'), 1)
-      }}
-      onPointerMissed={() => document.body.style.cursor = 'default'}
-    >
-      <World {...props} />
-    </Canvas>
-  )
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return
+    const compact = window.matchMedia('(max-width: 680px)').matches
+    const map = new MapLibreMap({
+      container: containerRef.current,
+      style: geographicStyle,
+      center: compact ? [108.2, 33.2] : [105.5, 34.8],
+      zoom: compact ? 3.25 : 3.65,
+      pitch: compact ? 54 : 60,
+      bearing: -16,
+      maxPitch: 78,
+      minZoom: 2.4,
+      maxZoom: 8,
+      attributionControl: false,
+      canvasContextAttributes: { antialias: true },
+    })
+    mapRef.current = map
+
+    map.addControl(new NavigationControl({ visualizePitch: true, showCompass: true }), 'bottom-left')
+    map.addControl(
+      new AttributionControl({
+        compact: true,
+        customAttribution: '唐代概念疆域：VerseCloud',
+      }),
+      'bottom-right',
+    )
+
+    const markers: Marker[] = []
+    let focusFrame = 0
+    const reportFocus = () => {
+      if (focusFrame) return
+      focusFrame = window.requestAnimationFrame(() => {
+        const center = map.getCenter()
+        onFocusRef.current(projectPoint(center.lng, center.lat))
+        focusFrame = 0
+      })
+    }
+
+    map.once('style.load', () => {
+      map.setTerrain({ source: 'terrain', exaggeration: compact ? 1.25 : 1.5 })
+      addHistoricalLayers(map, poems)
+      poems.forEach((poem) => {
+        const { marker } = createPoemMarker(poem, (nextPoem) => onSelectRef.current(nextPoem))
+        marker.setLngLat([poem.longitude, poem.latitude]).addTo(map)
+        markers.push(marker)
+      })
+      containerRef.current?.setAttribute('data-map-ready', 'true')
+      reportFocus()
+    })
+    map.on('move', reportFocus)
+
+    return () => {
+      if (focusFrame) window.cancelAnimationFrame(focusFrame)
+      markers.forEach((marker) => marker.remove())
+      selectedMarkerRef.current?.remove()
+      selectedMarkerRef.current = null
+      map.remove()
+      mapRef.current = null
+    }
+  }, [poems])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    selectedMarkerRef.current?.remove()
+    selectedMarkerRef.current = createVerticalVerseMarker(selectedPoem)
+      .setLngLat([selectedPoem.longitude, selectedPoem.latitude])
+      .addTo(map)
+
+    const source = map.getSource('poems') as GeoJSONSource | undefined
+    if (source) source.setData(poemCollection(poems))
+  }, [poems, selectedPoem])
+
+  return <div ref={containerRef} className="geographic-map" aria-label="三维唐代概念地形地图" />
 }

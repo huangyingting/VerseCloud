@@ -150,11 +150,13 @@ export function App() {
       <section className="map-legend" aria-label="地图说明">
         <span><i className="legend-dot poem" />诗词地点</span>
         <span><i className="legend-line river" />江河意象</span>
+        <span><i className="legend-relief" />真实高程</span>
         <span><i className="legend-area" />概念疆域</span>
       </section>
 
       <div className="interaction-hint">
-        <span>拖动游历</span>
+        <span>拖动山河</span>
+        <span>右键旋转</span>
         <span>滚轮远近</span>
         <span>点击诗光</span>
       </div>
@@ -170,20 +172,20 @@ export function App() {
           {detailsOpen ? '收' : '展'}
         </button>
 
-        <div className="poem-heading">
-          <div>
-            <span className="place-chip">{selectedPoem.placeName}</span>
-            <h1>{selectedPoem.title}</h1>
-            <p>〔唐〕{selectedPoem.author}</p>
-          </div>
+        <div className="poem-meta">
+          <span className="place-chip">{selectedPoem.placeName}</span>
           <span className="poem-count">
             {String(selectedIndex + 1).padStart(2, '0')}
             <small>/ {String(poems.length).padStart(2, '0')}</small>
           </span>
         </div>
 
-        <div className="poem-lines">
-          {selectedPoem.lines.map((line) => <p key={line}>{line}</p>)}
+        <div className="vertical-reading">
+          <h1>{selectedPoem.title}</h1>
+          <p className="vertical-author">唐 · {selectedPoem.author}</p>
+          <div className="poem-lines" aria-label={selectedPoem.lines.join('，')}>
+            {selectedPoem.lines.map((line) => <p key={line}>{line}</p>)}
+          </div>
         </div>
 
         <div className="evidence-block">
@@ -217,7 +219,7 @@ export function App() {
       </section>
 
       <footer className="release-note">
-        <span>概念版 0.2</span>
+        <span>山河版 0.3</span>
         <p>{activeSnapshot.note}</p>
       </footer>
 
@@ -231,11 +233,11 @@ export function App() {
               诗行落在大地上，<br />声音随山河而流转。
             </h2>
             <p>
-              从长安出发，沿江入梦。地图移动时，长安、江南与西域的程序化音景会自然交融。
+              从长安出发，循真实山脉与江河入梦。地图移动时，长安、江南与西域的程序化音景会自然交融。
             </p>
             <button type="button" className="enter-button" onClick={startExperience}>
               <span>展开诗卷</span>
-              <i>开启声音与三维游历</i>
+              <i>开启声音与真实地形游历</i>
             </button>
             <small>建议佩戴耳机 · 进入后可随时静音</small>
           </div>

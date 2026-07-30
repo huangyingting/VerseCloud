@@ -1,5 +1,5 @@
 :root {
-  font-family: "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", STSong, serif;
+  font-family: "Zhuque Fangsong (technical preview)", FangSong, STFangsong, "FangSong_GB2312", serif;
   color: #efe6d2;
   background: #0e1713;
   font-synthesis: none;
@@ -59,6 +59,147 @@ a:focus-visible {
 .scene-layer canvas {
   display: block;
   touch-action: none;
+}
+
+.scene-layer .geographic-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #09130f;
+}
+
+.maplibregl-canvas {
+  filter: sepia(0.08) saturate(0.82);
+}
+
+.maplibregl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid rgb(226 211 178 / 15%);
+  border-radius: 0;
+  background: rgb(13 24 19 / 78%);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 22%);
+  backdrop-filter: blur(12px);
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top-color: rgb(226 211 178 / 12%);
+}
+
+.maplibregl-ctrl button .maplibregl-ctrl-icon {
+  filter: invert(88%) sepia(18%) saturate(370%);
+  opacity: 0.72;
+}
+
+.maplibregl-ctrl-attrib {
+  color: #8e8a79;
+  background: rgb(9 18 14 / 72%) !important;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: #aaa38e;
+}
+
+.geographic-poem-marker {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  min-width: 28px;
+  padding: 0 0 2px;
+  border: 0;
+  color: #eee2c7;
+  background: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 3px 4px rgb(0 0 0 / 70%));
+}
+
+.marker-stem {
+  position: relative;
+  width: 1px;
+  height: 27px;
+  background: linear-gradient(180deg, transparent, var(--poem-accent));
+}
+
+.marker-stem::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -3px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid #f0dfbd;
+  border-radius: 50%;
+  background: var(--poem-accent);
+  box-shadow: 0 0 13px 3px var(--poem-accent);
+  transform: translateX(-50%);
+}
+
+.marker-place-label {
+  padding-bottom: 17px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 5px #000;
+  white-space: nowrap;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.geographic-poem-marker:hover .marker-place-label,
+.geographic-poem-marker:focus-visible .marker-place-label {
+  color: #fff3d3;
+  transform: translateY(-2px);
+}
+
+.map-vertical-verse {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 6px;
+  max-height: 236px;
+  padding: 12px 10px;
+  border: 1px solid rgb(226 211 178 / 21%);
+  color: #eadfc6;
+  background: linear-gradient(135deg, rgb(29 41 34 / 92%), rgb(10 19 15 / 88%));
+  box-shadow: 0 12px 32px rgb(0 0 0 / 30%);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.map-vertical-verse strong,
+.map-vertical-verse > span,
+.map-vertical-lines p {
+  margin: 0;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+
+.map-vertical-verse strong {
+  color: #f2dfb7;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+}
+
+.map-vertical-verse > span {
+  color: #a9a087;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.map-vertical-lines {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 4px;
+  padding-right: 5px;
+  border-right: 1px solid rgb(226 211 178 / 12%);
+}
+
+.map-vertical-lines p {
+  color: #d9cfb7;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.08em;
 }
 
 .scene-loading {
@@ -371,6 +512,13 @@ a:focus-visible {
   background: var(--jade);
 }
 
+.legend-relief {
+  width: 14px;
+  height: 8px;
+  background: linear-gradient(145deg, #313d32 0 42%, #8c8064 44% 58%, #26352d 60%);
+  box-shadow: inset 0 0 0 1px rgb(224 193 124 / 20%);
+}
+
 .legend-area {
   width: 13px;
   height: 8px;
@@ -403,7 +551,7 @@ a:focus-visible {
   z-index: 6;
   top: 112px;
   right: 28px;
-  width: min(370px, calc(100vw - 56px));
+  width: min(410px, calc(100vw - 56px));
   max-height: calc(100vh - 156px);
   padding: 27px 27px 22px;
   border: 1px solid rgb(226 211 178 / 18%);
@@ -457,11 +605,11 @@ a:focus-visible {
   font-size: 12px;
 }
 
-.poem-heading {
+.poem-meta {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding-bottom: 18px;
+  align-items: center;
+  padding-bottom: 13px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -475,18 +623,41 @@ a:focus-visible {
   letter-spacing: 0.18em;
 }
 
-.poem-heading h1 {
-  margin: 0;
-  color: #f3e8ce;
-  font-size: clamp(28px, 3vw, 38px);
-  font-weight: 400;
-  letter-spacing: 0.16em;
+.vertical-reading {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  gap: 13px;
+  min-height: 205px;
+  padding: 22px 3px 20px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(195 165 106 / 35%) transparent;
 }
 
-.poem-heading p {
-  margin: 7px 0 0;
+.vertical-reading h1,
+.vertical-author,
+.poem-lines p {
+  margin: 0;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+
+.vertical-reading h1 {
+  flex: none;
+  margin: 0;
+  color: #f3e8ce;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.18em;
+}
+
+.vertical-author {
+  flex: none;
   color: var(--paper-muted);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.5;
   letter-spacing: 0.16em;
 }
 
@@ -502,15 +673,19 @@ a:focus-visible {
 }
 
 .poem-lines {
-  padding: 21px 0 17px;
+  display: flex;
+  flex: none;
+  flex-direction: row-reverse;
+  gap: 10px;
+  padding-right: 13px;
+  border-right: 1px solid var(--line);
 }
 
 .poem-lines p {
-  margin: 0 0 9px;
   color: #e7dcc4;
   font-size: 15px;
-  line-height: 1.65;
-  letter-spacing: 0.13em;
+  line-height: 1.55;
+  letter-spacing: 0.12em;
 }
 
 .evidence-block {
@@ -844,14 +1019,18 @@ a:focus-visible {
     border-bottom: 0;
   }
 
-  .poem-heading h1 { font-size: 27px; }
-  .poem-lines { padding: 14px 0 10px; }
-  .poem-lines p { margin-bottom: 5px; font-size: 13px; }
+  .vertical-reading { min-height: 168px; padding: 14px 2px 12px; gap: 9px; }
+  .vertical-reading h1 { font-size: 23px; }
+  .vertical-author { font-size: 9px; }
+  .poem-lines { gap: 7px; padding-right: 9px; }
+  .poem-lines p { font-size: 13px; line-height: 1.4; }
   .evidence-block { display: none; }
   .poem-controls { margin-top: 12px; }
   .map-legend,
   .interaction-hint { display: none; }
   .release-note { right: 12px; bottom: 12px; }
+  .map-vertical-verse { display: none; }
+  .maplibregl-ctrl-bottom-left { bottom: 82px; }
 
   .gate-eyebrow { font-size: 9px; }
   .gate-content h2 { font-size: 35px; }
