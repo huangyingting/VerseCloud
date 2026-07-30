@@ -4,7 +4,9 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   const runtimeErrors: string[] = []
   page.on('pageerror', (error) => runtimeErrors.push(error.message))
   page.on('console', (message) => {
-    if (message.text().includes('Context Lost')) runtimeErrors.push(message.text())
+    if (message.type() === 'error' || message.text().includes('Context Lost')) {
+      runtimeErrors.push(message.text())
+    }
   })
 
   await page.goto('/')
@@ -27,6 +29,13 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   expect(await page.locator('.poem-effect i').count()).toBe(8)
   await expect(page.locator('.poem-card')).toHaveCount(0)
   await expect(page.getByRole('button', { name: '静音' })).toBeEnabled()
+  await expect(page.locator('.maplibregl-ctrl-attrib')).toHaveCount(0)
+
+  const map = page.locator('.geographic-map')
+  await expect(map).not.toHaveClass(/map-intro-moving/, { timeout: 8_000 })
+  await page.mouse.click(1_314, 693)
+  await expect(page.getByRole('heading', { name: '宿建德江' })).toBeVisible()
+  await expect(page.getByText('移舟泊烟渚，日暮客愁新。', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: '秋', exact: true }).click()
   await expect(page.locator('main')).toHaveClass(/season-autumn/)

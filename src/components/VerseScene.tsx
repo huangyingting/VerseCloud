@@ -1,5 +1,4 @@
 import {
-  AttributionControl,
   Map as MapLibreMap,
   Marker,
   setWorkerUrl,
@@ -398,16 +397,14 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: st
     type: 'circle',
     source: 'poems',
     paint: {
-      'circle-radius': [
-        'case',
-        ['get', 'selected'],
-        ['interpolate', ['linear'], ['zoom'], 3, 18, 7, 29],
-        ['interpolate', ['linear'], ['zoom'], 3, 13, 7, 24],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'],
+        3, ['case', ['get', 'selected'], 20, 15],
+        7, ['case', ['get', 'selected'], 31, 26],
       ],
       'circle-color': '#d7ba76',
-      'circle-opacity': 0.14,
-      'circle-blur': 0.72,
-      'circle-pitch-alignment': 'map',
+      'circle-opacity': ['case', ['get', 'selected'], 0.28, 0.2],
+      'circle-blur': 0.66,
+      'circle-pitch-alignment': 'viewport',
     },
   })
   map.addLayer({
@@ -415,15 +412,13 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: st
     type: 'circle',
     source: 'poems',
     paint: {
-      'circle-radius': [
-        'case',
-        ['get', 'selected'],
-        ['interpolate', ['linear'], ['zoom'], 3, 9, 7, 13],
-        ['interpolate', ['linear'], ['zoom'], 3, 7, 7, 11],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'],
+        3, ['case', ['get', 'selected'], 10, 8],
+        7, ['case', ['get', 'selected'], 15, 12],
       ],
       'circle-color': ['case', ['get', 'selected'], '#efc665', '#ddb95e'],
       'circle-stroke-color': ['case', ['get', 'selected'], '#fff8dc', '#f6e5bd'],
-      'circle-stroke-width': ['case', ['get', 'selected'], 2.4, 1.8],
+      'circle-stroke-width': ['case', ['get', 'selected'], 2.8, 2.2],
       'circle-opacity': ['case', ['get', 'selected'], 1, 0.96],
       'circle-pitch-alignment': 'viewport',
     },
@@ -636,19 +631,6 @@ export function VerseScene({
     })
     mapRef.current = map
     introInProgressRef.current = true
-
-    map.addControl(
-      new AttributionControl({
-        compact: true,
-        customAttribution: '唐代概念疆域：VerseCloud',
-      }),
-      'bottom-right',
-    )
-    window.requestAnimationFrame(() => {
-      containerRef.current
-        ?.querySelector('.maplibregl-ctrl-attrib')
-        ?.removeAttribute('open')
-    })
 
     const compass = document.createElement('button')
     compass.type = 'button'

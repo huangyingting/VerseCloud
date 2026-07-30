@@ -200,7 +200,7 @@ export function App() {
 
       <footer className="release-note">
         <span>山河卷 0.8</span>
-        <p>{activeSnapshot.note}</p>
+        <p>{activeSnapshot.note} · 地图 © OpenFreeMap / OpenStreetMap</p>
       </footer>
 
       {!entered && (
