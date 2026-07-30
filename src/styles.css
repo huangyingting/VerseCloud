@@ -1,5 +1,6 @@
 :root {
-  font-family: "Zhuque Fangsong (technical preview)", FangSong, STFangsong, "FangSong_GB2312", serif;
+  --fangsong: "Zhuque Fangsong (technical preview)", FangSong, STFangsong, "FangSong_GB2312", serif;
+  font-family: var(--fangsong);
   color: #efe6d2;
   background: #0e1713;
   font-synthesis: none;
@@ -67,6 +68,7 @@ a:focus-visible {
   width: 100%;
   height: 100%;
   background: #09130f;
+  font-family: var(--fangsong);
 }
 
 .maplibregl-canvas {
@@ -119,6 +121,7 @@ a:focus-visible {
   box-shadow: 0 5px 22px rgb(0 0 0 / 22%);
   cursor: pointer;
   backdrop-filter: blur(8px);
+  font-family: var(--fangsong);
 }
 
 .verse-compass span {
@@ -159,6 +162,7 @@ a:focus-visible {
   filter: drop-shadow(0 3px 4px rgb(0 0 0 / 70%));
   opacity: 0.64;
   transition: opacity 200ms ease;
+  font-family: var(--fangsong);
 }
 
 .marker-stem {
@@ -236,6 +240,7 @@ a:focus-visible {
   box-shadow: 0 12px 32px rgb(0 0 0 / 28%);
   backdrop-filter: blur(10px);
   pointer-events: none;
+  font-family: var(--fangsong);
 }
 
 .map-poem-sign strong,
