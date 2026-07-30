@@ -513,6 +513,22 @@ function splitVerseSentences(lines: string[]) {
   )
 }
 
+function compactVerticalLabel(value: string) {
+  return value.replace(/\s*·\s*/gu, '·').trim()
+}
+
+function fitVerticalText(
+  value: string,
+  columnHeight: number,
+  maximumSize: number,
+  letterSpacingEm: number,
+) {
+  const characters = Math.max(1, [...value].length)
+  const fittedSize = columnHeight
+    / (characters + Math.max(0, characters - 1) * letterSpacingEm)
+  return Math.min(maximumSize, fittedSize)
+}
+
 function sizeVerticalVerseMarker(element: HTMLElement, poem: Poem) {
   const compact = window.matchMedia('(max-width: 680px)').matches
   const sentences = splitVerseSentences(poem.lines)
@@ -539,13 +555,24 @@ function sizeVerticalVerseMarker(element: HTMLElement, poem: Poem) {
   )
   const columnHeight = fontSize
     * (longestSentence + Math.max(0, longestSentence - 1) * letterSpacingEm)
-  const titleSize = compact
-    ? Math.min(19, Math.max(16, fontSize * 1.48))
-    : Math.min(25, Math.max(19, fontSize * 1.52))
+  const titleSize = fitVerticalText(
+    poem.title,
+    columnHeight,
+    compact ? Math.min(19, fontSize * 1.48) : Math.min(25, fontSize * 1.52),
+    0.12,
+  )
+  const authorLabel = `唐·${poem.author}`
+  const metaLabel = `${compactVerticalLabel(poem.placeName)}·${compactVerticalLabel(poem.visualEffectLabel)}`
+  const authorSize = fitVerticalText(authorLabel, columnHeight, compact ? 9 : 12, 0.05)
+  const metaSize = fitVerticalText(metaLabel, columnHeight, compact ? 8 : 10, 0.04)
 
   element.style.setProperty('--map-poem-font-size', `${fontSize.toFixed(2)}px`)
   element.style.setProperty('--map-poem-title-size', `${titleSize.toFixed(2)}px`)
-  element.style.setProperty('--map-poem-column-height', `${columnHeight.toFixed(2)}px`)
+  element.style.setProperty('--map-poem-author-size', `${authorSize.toFixed(2)}px`)
+  element.style.setProperty('--map-poem-meta-size', `${metaSize.toFixed(2)}px`)
+  // Leave a few physical pixels for font ascenders, punctuation and browser
+  // sub-pixel rounding while keeping every item inside the same visual column.
+  element.style.setProperty('--map-poem-column-height', `${(columnHeight + 3).toFixed(2)}px`)
   element.dataset.sentenceCount = String(sentences.length)
 }
 
@@ -559,7 +586,7 @@ function createVerticalVerseMarker(poem: Poem) {
   heading.textContent = poem.title
   const author = document.createElement('p')
   author.className = 'map-poem-author'
-  author.textContent = `唐 · ${poem.author}`
+  author.textContent = `唐·${poem.author}`
   const lines = document.createElement('div')
   lines.className = 'map-poem-lines'
   lines.setAttribute('aria-label', poem.lines.join(''))
@@ -569,7 +596,7 @@ function createVerticalVerseMarker(poem: Poem) {
     lines.append(verseLine)
   })
   const place = document.createElement('footer')
-  place.textContent = `${poem.placeName} · ${poem.visualEffectLabel}`
+  place.textContent = `${compactVerticalLabel(poem.placeName)}·${compactVerticalLabel(poem.visualEffectLabel)}`
   element.append(heading, author, lines, place)
   sizeVerticalVerseMarker(element, poem)
   return new Marker({ element, anchor: 'bottom', offset: [0, -28] })

@@ -66,6 +66,18 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.locator('.map-poem-sign')).toHaveAttribute('data-sentence-count', '4')
   await expect(page.locator('.geographic-map .poem-effect.effect-river-flight')).toBeVisible()
   await expect(page.locator('.poem-card')).toHaveCount(0)
+
+  await page.locator('[data-poem-select="wang-wei-weicheng"]').evaluate((button: HTMLButtonElement) => {
+    button.click()
+  })
+  await expect(page.getByRole('heading', { name: '送元二使安西' })).toBeVisible()
+  await expect(page.getByText('唐·王维', { exact: true })).toBeVisible()
+  await expect(page.getByText('渭城·朝雨·柳色', { exact: true })).toBeVisible()
+  const verticalColumnsFit = await page.locator('.map-poem-sign').evaluate((sign) =>
+    [...sign.querySelectorAll('h1, .map-poem-author, .map-poem-lines p, footer')]
+      .every((column) => column.scrollHeight <= column.clientHeight),
+  )
+  expect(verticalColumnsFit).toBe(true)
   expect(runtimeErrors).toEqual([])
 })
 
