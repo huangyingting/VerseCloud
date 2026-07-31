@@ -29,10 +29,15 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-hit-ready', 'true')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-scope', 'tang-surroundings')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-boundary-rendered', 'false')
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-point-style', 'elevated-3d')
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-point-style', 'abstract-slip')
   const placeGroups = JSON.parse(
     await page.locator('.geographic-map').getAttribute('data-poem-place-groups') ?? '[]',
-  ) as Array<{ key: string; liftTier: number; hasNearbyPlace: boolean }>
+  ) as Array<{
+    key: string
+    liftTier: number
+    markerHeight: number
+    hasNearbyPlace: boolean
+  }>
   const crowdedCapitalMarkers = placeGroups.filter((group) =>
     ['changan', 'weicheng', 'pu-guanquelou'].includes(group.key),
   )
@@ -68,12 +73,14 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
     await map.getAttribute('data-poem-screen-positions') ?? '{}',
   ) as Record<string, { x: number; y: number }>
   const weichengPoint = initialPoemScreenPositions['wang-wei-weicheng']
+  const weichengMarker = placeGroups.find((group) => group.key === 'weicheng')
   expect(weichengPoint).toBeTruthy()
-  // The crowded capital markers are clickable at their raised WebGL heads,
+  expect(weichengMarker).toBeTruthy()
+  // The crowded capital slips are clickable at their raised WebGL heads,
   // not only at the geographic base point.
   await page.mouse.click(
     (mapBounds?.x ?? 0) + weichengPoint.x,
-    (mapBounds?.y ?? 0) + weichengPoint.y - 90,
+    (mapBounds?.y ?? 0) + weichengPoint.y - weichengMarker!.markerHeight + 12,
   )
   await expect(page.getByRole('heading', { name: '送元二使安西' })).toBeVisible()
   await expect(map).not.toHaveClass(/map-moving/, { timeout: 3_000 })

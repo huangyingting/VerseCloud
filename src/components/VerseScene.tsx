@@ -231,8 +231,10 @@ function createLabelImage(name: string, kind: 'region' | 'prefecture') {
   return { image: context.getImageData(0, 0, canvas.width, canvas.height), pixelRatio }
 }
 
-function poemPinHeight(liftTier: number) {
-  return 42 + Math.max(0, liftTier) * 30
+const poemMarkerHeadCenterY = 12
+
+function poemMarkerHeight(liftTier: number) {
+  return 36 + Math.max(0, liftTier) * 28
 }
 
 function createPoemLabelImage(name: string) {
@@ -273,18 +275,20 @@ function createPoemCountImage(count: number) {
   const context = canvas.getContext('2d')
   if (!context) return null
   context.scale(pixelRatio, pixelRatio)
-  context.font = 'bold 11px ui-sans-serif, system-ui, sans-serif'
+  context.font = '600 10px "Zhuque Fangsong (technical preview)", FangSong, serif'
   context.textAlign = 'center'
   context.textBaseline = 'middle'
-  context.fillStyle = '#2b1d0c'
+  context.shadowColor = 'rgba(2, 7, 5, 0.9)'
+  context.shadowBlur = 2
+  context.fillStyle = '#f3dfb1'
   context.fillText(String(count), size / 2, size / 2 - 1)
   return { image: context.getImageData(0, 0, canvas.width, canvas.height), pixelRatio }
 }
 
-function createPoemPinImage(liftTier: number, selected: boolean) {
+function createPoemMarkerImage(liftTier: number, selected: boolean) {
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
-  const width = 48
-  const height = poemPinHeight(liftTier)
+  const width = 40
+  const height = poemMarkerHeight(liftTier)
   const canvas = document.createElement('canvas')
   canvas.width = width * pixelRatio
   canvas.height = height * pixelRatio
@@ -293,62 +297,67 @@ function createPoemPinImage(liftTier: number, selected: boolean) {
   context.scale(pixelRatio, pixelRatio)
 
   const centerX = width / 2
-  const headY = 12
-  const baseY = height - 5
-  const radius = selected ? 10.5 : 8.5
-
-  context.fillStyle = 'rgba(2, 7, 5, 0.62)'
-  context.beginPath()
-  context.ellipse(centerX + 3, baseY + 1, selected ? 12 : 9, 3.2, 0, 0, Math.PI * 2)
-  context.fill()
+  const headWidth = selected ? 16 : 14
+  const headHeight = selected ? 22 : 20
+  const headX = centerX - headWidth / 2
+  const headY = poemMarkerHeadCenterY - headHeight / 2
+  const baseY = height - 3
 
   context.lineCap = 'round'
-  context.strokeStyle = 'rgba(1, 5, 3, 0.78)'
-  context.lineWidth = 5
+  context.strokeStyle = 'rgba(1, 5, 3, 0.72)'
+  context.lineWidth = 3
   context.beginPath()
-  context.moveTo(centerX + 2, headY + radius - 1)
-  context.lineTo(centerX + 2, baseY - 1)
+  context.moveTo(centerX + 1, headY + headHeight - 1)
+  context.lineTo(centerX + 1, baseY - 3)
   context.stroke()
 
   const stem = context.createLinearGradient(centerX, headY, centerX, baseY)
-  stem.addColorStop(0, '#f6dda0')
-  stem.addColorStop(0.42, '#b88436')
-  stem.addColorStop(1, '#60451f')
+  stem.addColorStop(0, selected ? '#f1d49a' : '#c8b27f')
+  stem.addColorStop(1, selected ? '#8f6540' : '#5f604f')
   context.strokeStyle = stem
-  context.lineWidth = selected ? 3 : 2.4
+  context.lineWidth = selected ? 1.8 : 1.2
   context.beginPath()
-  context.moveTo(centerX, headY + radius - 1)
+  context.moveTo(centerX, headY + headHeight - 1)
+  context.lineTo(centerX, baseY - 3)
+  context.stroke()
+
+  context.strokeStyle = selected ? '#d4a866' : 'rgba(183, 169, 126, 0.72)'
+  context.lineWidth = selected ? 1.8 : 1.2
+  context.beginPath()
+  context.moveTo(centerX - 6, baseY - 3)
   context.lineTo(centerX, baseY)
+  context.lineTo(centerX + 6, baseY - 3)
   context.stroke()
 
-  context.fillStyle = selected ? 'rgba(245, 198, 91, 0.24)' : 'rgba(219, 174, 80, 0.14)'
+  const corner = 3
   context.beginPath()
-  context.arc(centerX, headY, radius + (selected ? 6 : 4), 0, Math.PI * 2)
-  context.fill()
-
-  const sphere = context.createRadialGradient(
-    centerX - radius * 0.35,
-    headY - radius * 0.45,
-    radius * 0.12,
-    centerX,
-    headY,
-    radius,
-  )
-  sphere.addColorStop(0, '#fff9dc')
-  sphere.addColorStop(0.24, selected ? '#ffd978' : '#efc564')
-  sphere.addColorStop(0.72, selected ? '#a66c21' : '#8b5d24')
-  sphere.addColorStop(1, '#3d2913')
-  context.fillStyle = sphere
-  context.strokeStyle = selected ? '#fff0b9' : '#e7c47a'
-  context.lineWidth = selected ? 2.2 : 1.5
-  context.beginPath()
-  context.arc(centerX, headY, radius, 0, Math.PI * 2)
+  context.moveTo(headX + corner, headY)
+  context.lineTo(headX + headWidth - corner, headY)
+  context.lineTo(headX + headWidth, headY + corner)
+  context.lineTo(headX + headWidth, headY + headHeight - corner)
+  context.lineTo(headX + headWidth - corner, headY + headHeight)
+  context.lineTo(headX + corner, headY + headHeight)
+  context.lineTo(headX, headY + headHeight - corner)
+  context.lineTo(headX, headY + corner)
+  context.closePath()
+  context.fillStyle = selected ? 'rgba(139, 65, 48, 0.96)' : 'rgba(16, 29, 24, 0.9)'
+  context.strokeStyle = selected ? '#f0d59c' : 'rgba(220, 202, 158, 0.9)'
+  context.lineWidth = selected ? 1.8 : 1.25
   context.fill()
   context.stroke()
 
-  context.fillStyle = '#fffbea'
+  context.strokeStyle = selected ? '#f9e7ba' : 'rgba(208, 190, 148, 0.72)'
+  context.lineWidth = 1
   context.beginPath()
-  context.arc(centerX - radius * 0.32, headY - radius * 0.38, radius * 0.2, 0, Math.PI * 2)
+  context.moveTo(centerX - 3, poemMarkerHeadCenterY - 3)
+  context.lineTo(centerX + 3, poemMarkerHeadCenterY - 3)
+  context.moveTo(centerX - 3, poemMarkerHeadCenterY + 1)
+  context.lineTo(centerX + 3, poemMarkerHeadCenterY + 1)
+  context.stroke()
+
+  context.fillStyle = selected ? '#f7dfab' : '#baaa80'
+  context.beginPath()
+  context.arc(centerX, poemMarkerHeadCenterY + 6, 1.1, 0, Math.PI * 2)
   context.fill()
 
   return { image: context.getImageData(0, 0, canvas.width, canvas.height), pixelRatio }
@@ -371,10 +380,10 @@ function poemCollection(poems: Poem[], selectedPoemId?: string): GeoJSON.Feature
           placeName: group.placeName,
           accent: representative.accent,
           imageId: `poem-label-${index}`,
-          pinImageId: `poem-pin-${group.liftTier}-${selected ? 'selected' : 'idle'}`,
+          markerImageId: `poem-marker-${group.liftTier}-${selected ? 'selected' : 'idle'}`,
           countImageId: `poem-count-${group.poems.length}`,
-          labelOffset: [0, -poemPinHeight(group.liftTier) - 5],
-          countOffset: [0, -poemPinHeight(group.liftTier) + 23],
+          labelOffset: [0, -poemMarkerHeight(group.liftTier) - 4],
+          countOffset: [0, -poemMarkerHeight(group.liftTier) + 23],
           memberIds: JSON.stringify(group.poems.map((poem) => poem.id)),
           count: group.poems.length,
           liftTier: group.liftTier,
@@ -419,100 +428,10 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: st
     type: 'circle',
     source: 'poems',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 19, 7, 25],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 22, 7, 28],
       'circle-color': '#ffffff',
       'circle-opacity': 0.001,
       'circle-pitch-alignment': 'viewport',
-    },
-  })
-  map.addLayer({
-    id: 'poem-ground-shadow',
-    type: 'circle',
-    source: 'poems',
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 11, 7, 17],
-      'circle-color': '#020705',
-      'circle-opacity': 0.64,
-      'circle-blur': 0.38,
-      'circle-translate': [0, 7],
-      'circle-pitch-alignment': 'viewport',
-      'circle-translate-anchor': 'viewport',
-    },
-  })
-  map.addLayer({
-    id: 'poem-stack-back',
-    type: 'circle',
-    source: 'poems',
-    filter: ['>', ['get', 'count'], 1],
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 11, 7, 16],
-      'circle-color': '#735829',
-      'circle-stroke-color': '#e0c37d',
-      'circle-stroke-width': 1.5,
-      'circle-translate': [-5, -5],
-      'circle-pitch-alignment': 'viewport',
-      'circle-translate-anchor': 'viewport',
-    },
-  })
-  map.addLayer({
-    id: 'poem-halo',
-    type: 'circle',
-    source: 'poems',
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'],
-        3, ['case', ['get', 'selected'], 20, 15],
-        7, ['case', ['get', 'selected'], 31, 26],
-      ],
-      'circle-color': '#d7ba76',
-      'circle-opacity': ['case', ['get', 'selected'], 0.28, 0.2],
-      'circle-blur': 0.66,
-      'circle-pitch-alignment': 'viewport',
-    },
-  })
-  map.addLayer({
-    id: 'poem-points',
-    type: 'circle',
-    source: 'poems',
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'],
-        3, ['case', ['get', 'selected'], 10, 8],
-        7, ['case', ['get', 'selected'], 15, 12],
-      ],
-      'circle-color': ['case', ['get', 'selected'], '#9e712f', '#80602e'],
-      'circle-stroke-color': ['case', ['get', 'selected'], '#fff0bc', '#e9cb84'],
-      'circle-stroke-width': ['case', ['get', 'selected'], 2.6, 2],
-      'circle-opacity': ['case', ['get', 'selected'], 1, 0.96],
-      'circle-pitch-alignment': 'viewport',
-    },
-  })
-  map.addLayer({
-    id: 'poem-point-face',
-    type: 'circle',
-    source: 'poems',
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'],
-        3, ['case', ['get', 'selected'], 7.4, 5.8],
-        7, ['case', ['get', 'selected'], 11.4, 8.7],
-      ],
-      'circle-color': ['case', ['get', 'selected'], '#f2c966', '#d9ad52'],
-      'circle-opacity': 1,
-      'circle-translate': [0, -2],
-      'circle-pitch-alignment': 'viewport',
-      'circle-translate-anchor': 'viewport',
-    },
-  })
-  map.addLayer({
-    id: 'poem-point-shine',
-    type: 'circle',
-    source: 'poems',
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 2.1, 7, 3.2],
-      'circle-color': '#fff8da',
-      'circle-opacity': 0.82,
-      'circle-blur': 0.12,
-      'circle-translate': [-3, -6],
-      'circle-pitch-alignment': 'viewport',
-      'circle-translate-anchor': 'viewport',
     },
   })
 }
@@ -545,12 +464,12 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
       const rendered = createPoemCountImage(count)
       if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
     })
-  const pinStates = ['idle', 'selected'] as const
+  const markerStates = ['idle', 'selected'] as const
   new Set(poemGroups.map((group) => group.liftTier)).forEach((liftTier) => {
-    pinStates.forEach((state) => {
-      const id = `poem-pin-${liftTier}-${state}`
+    markerStates.forEach((state) => {
+      const id = `poem-marker-${liftTier}-${state}`
       if (map.hasImage(id)) return
-      const rendered = createPoemPinImage(liftTier, state === 'selected')
+      const rendered = createPoemMarkerImage(liftTier, state === 'selected')
       if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
     })
   })
@@ -593,11 +512,12 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
     },
   })
   map.addLayer({
-    id: 'poem-elevated-pins',
+    id: 'poem-location-markers',
     type: 'symbol',
     source: 'poems',
     layout: {
-      'icon-image': ['get', 'pinImageId'],
+      'icon-image': ['get', 'markerImageId'],
+      'icon-size': ['case', ['get', 'selected'], 1.08, 1],
       'icon-anchor': 'bottom',
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
@@ -1042,13 +962,14 @@ export function VerseScene({
       addHistoricalLayers(map, poems, selectedPoemRef.current.id)
       containerRef.current?.setAttribute('data-map-scope', 'tang-surroundings')
       containerRef.current?.setAttribute('data-boundary-rendered', 'false')
-      containerRef.current?.setAttribute('data-poem-point-style', 'elevated-3d')
+      containerRef.current?.setAttribute('data-poem-point-style', 'abstract-slip')
       containerRef.current?.setAttribute(
         'data-poem-place-groups',
         JSON.stringify(elevatedPlaces.map((group) => ({
           key: group.key,
           count: group.poems.length,
           liftTier: group.liftTier,
+          markerHeight: poemMarkerHeight(group.liftTier),
           hasNearbyPlace: group.hasNearbyPlace,
         }))),
       )
@@ -1078,24 +999,29 @@ export function VerseScene({
         })
       })
     })
+    const findMarkerGroup = (point: { x: number; y: number }) => {
+      let closestGroup: (typeof elevatedPlaces)[number] | undefined
+      let closestScore = Number.POSITIVE_INFINITY
+      elevatedPlaces.forEach((group) => {
+        const ground = map.project([group.longitude, group.latitude])
+        const head = {
+          x: ground.x,
+          y: ground.y - poemMarkerHeight(group.liftTier) + poemMarkerHeadCenterY,
+        }
+        const headDistance = Math.hypot(point.x - head.x, point.y - head.y)
+        const baseDistance = Math.hypot(point.x - ground.x, point.y - ground.y)
+        const score = Math.min(headDistance / 21, baseDistance / 24)
+        if (score <= 1 && score < closestScore) {
+          closestGroup = group
+          closestScore = score
+        }
+      })
+      return closestGroup
+    }
+
     map.on('click', (event) => {
-      const directGroup = elevatedPlaces
-        .map((group) => {
-          const ground = map.project([group.longitude, group.latitude])
-          const head = {
-            x: ground.x,
-            y: ground.y - poemPinHeight(group.liftTier) + 12,
-          }
-          const headDistance = Math.hypot(event.point.x - head.x, event.point.y - head.y)
-          const baseDistance = Math.hypot(event.point.x - ground.x, event.point.y - ground.y)
-          return {
-            group,
-            score: Math.min(headDistance / 16, baseDistance / 22),
-          }
-        })
-        .filter((candidate) => candidate.score <= 1)
-        .sort((a, b) => a.score - b.score)[0]?.group
-      const layers = ['poem-hit-target', 'poem-point-face', 'poem-points']
+      const directGroup = findMarkerGroup(event.point)
+      const layers = ['poem-hit-target']
       if (map.getLayer('poem-place-labels')) layers.push('poem-place-labels')
       const feature = directGroup
         ? undefined
@@ -1137,17 +1063,15 @@ export function VerseScene({
         .setLngLat([representative.longitude, representative.latitude])
         .addTo(map)
     })
-    map.on('mouseenter', 'poem-hit-target', () => {
-      map.getCanvas().style.cursor = 'pointer'
-    })
-    map.on('mouseleave', 'poem-hit-target', () => {
-      map.getCanvas().style.cursor = ''
-    })
-    map.on('mouseenter', 'poem-elevated-pins', () => {
-      map.getCanvas().style.cursor = 'pointer'
-    })
-    map.on('mouseleave', 'poem-elevated-pins', () => {
-      map.getCanvas().style.cursor = ''
+    map.on('mousemove', (event) => {
+      if (findMarkerGroup(event.point)) {
+        map.getCanvas().style.cursor = 'pointer'
+        return
+      }
+      const labelLayers = map.getLayer('poem-place-labels') ? ['poem-place-labels'] : []
+      const overLabel = labelLayers.length > 0
+        && map.queryRenderedFeatures(event.point, { layers: labelLayers }).length > 0
+      map.getCanvas().style.cursor = overLabel ? 'pointer' : ''
     })
     map.on('dragstart', () => {
       wheelFocusPath = null
