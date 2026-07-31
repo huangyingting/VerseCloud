@@ -11,7 +11,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
 import { tangMapLabels, tangRegionDivisions } from '../data/tangGeography'
 import { projectPoint } from '../lib/geo'
-import { groupPoemsByPlace } from '../lib/poemPlaces'
+import { elevateNearbyPoemPlaces } from '../lib/poemPlaces'
 import type { Poem, ScenePoint, Season } from '../types'
 
 interface VerseSceneProps {
@@ -231,6 +231,10 @@ function createLabelImage(name: string, kind: 'region' | 'prefecture') {
   return { image: context.getImageData(0, 0, canvas.width, canvas.height), pixelRatio }
 }
 
+function poemPinHeight(liftTier: number) {
+  return 42 + Math.max(0, liftTier) * 30
+}
+
 function createPoemLabelImage(name: string) {
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
   const fontSize = 15
@@ -277,8 +281,81 @@ function createPoemCountImage(count: number) {
   return { image: context.getImageData(0, 0, canvas.width, canvas.height), pixelRatio }
 }
 
+function createPoemPinImage(liftTier: number, selected: boolean) {
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+  const width = 48
+  const height = poemPinHeight(liftTier)
+  const canvas = document.createElement('canvas')
+  canvas.width = width * pixelRatio
+  canvas.height = height * pixelRatio
+  const context = canvas.getContext('2d')
+  if (!context) return null
+  context.scale(pixelRatio, pixelRatio)
+
+  const centerX = width / 2
+  const headY = 12
+  const baseY = height - 5
+  const radius = selected ? 10.5 : 8.5
+
+  context.fillStyle = 'rgba(2, 7, 5, 0.62)'
+  context.beginPath()
+  context.ellipse(centerX + 3, baseY + 1, selected ? 12 : 9, 3.2, 0, 0, Math.PI * 2)
+  context.fill()
+
+  context.lineCap = 'round'
+  context.strokeStyle = 'rgba(1, 5, 3, 0.78)'
+  context.lineWidth = 5
+  context.beginPath()
+  context.moveTo(centerX + 2, headY + radius - 1)
+  context.lineTo(centerX + 2, baseY - 1)
+  context.stroke()
+
+  const stem = context.createLinearGradient(centerX, headY, centerX, baseY)
+  stem.addColorStop(0, '#f6dda0')
+  stem.addColorStop(0.42, '#b88436')
+  stem.addColorStop(1, '#60451f')
+  context.strokeStyle = stem
+  context.lineWidth = selected ? 3 : 2.4
+  context.beginPath()
+  context.moveTo(centerX, headY + radius - 1)
+  context.lineTo(centerX, baseY)
+  context.stroke()
+
+  context.fillStyle = selected ? 'rgba(245, 198, 91, 0.24)' : 'rgba(219, 174, 80, 0.14)'
+  context.beginPath()
+  context.arc(centerX, headY, radius + (selected ? 6 : 4), 0, Math.PI * 2)
+  context.fill()
+
+  const sphere = context.createRadialGradient(
+    centerX - radius * 0.35,
+    headY - radius * 0.45,
+    radius * 0.12,
+    centerX,
+    headY,
+    radius,
+  )
+  sphere.addColorStop(0, '#fff9dc')
+  sphere.addColorStop(0.24, selected ? '#ffd978' : '#efc564')
+  sphere.addColorStop(0.72, selected ? '#a66c21' : '#8b5d24')
+  sphere.addColorStop(1, '#3d2913')
+  context.fillStyle = sphere
+  context.strokeStyle = selected ? '#fff0b9' : '#e7c47a'
+  context.lineWidth = selected ? 2.2 : 1.5
+  context.beginPath()
+  context.arc(centerX, headY, radius, 0, Math.PI * 2)
+  context.fill()
+  context.stroke()
+
+  context.fillStyle = '#fffbea'
+  context.beginPath()
+  context.arc(centerX - radius * 0.32, headY - radius * 0.38, radius * 0.2, 0, Math.PI * 2)
+  context.fill()
+
+  return { image: context.getImageData(0, 0, canvas.width, canvas.height), pixelRatio }
+}
+
 function poemCollection(poems: Poem[], selectedPoemId?: string): GeoJSON.FeatureCollection<GeoJSON.Point> {
-  const groups = groupPoemsByPlace(poems)
+  const groups = elevateNearbyPoemPlaces(poems)
   return {
     type: 'FeatureCollection',
     features: groups.map((group, index) => {
@@ -294,8 +371,14 @@ function poemCollection(poems: Poem[], selectedPoemId?: string): GeoJSON.Feature
           placeName: group.placeName,
           accent: representative.accent,
           imageId: `poem-label-${index}`,
+          pinImageId: `poem-pin-${group.liftTier}-${selected ? 'selected' : 'idle'}`,
+          countImageId: `poem-count-${group.poems.length}`,
+          labelOffset: [0, -poemPinHeight(group.liftTier) - 5],
+          countOffset: [0, -poemPinHeight(group.liftTier) + 23],
           memberIds: JSON.stringify(group.poems.map((poem) => poem.id)),
           count: group.poems.length,
+          liftTier: group.liftTier,
+          hasNearbyPlace: group.hasNearbyPlace,
           selected,
           priority: selected
             ? 0
@@ -448,7 +531,7 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
     const rendered = createLabelImage(label.name, label.kind)
     if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
   })
-  const poemGroups = groupPoemsByPlace(poems)
+  const poemGroups = elevateNearbyPoemPlaces(poems)
   poemGroups.forEach((group, index) => {
     const id = `poem-label-${index}`
     if (map.hasImage(id)) return
@@ -462,6 +545,15 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
       const rendered = createPoemCountImage(count)
       if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
     })
+  const pinStates = ['idle', 'selected'] as const
+  new Set(poemGroups.map((group) => group.liftTier)).forEach((liftTier) => {
+    pinStates.forEach((state) => {
+      const id = `poem-pin-${liftTier}-${state}`
+      if (map.hasImage(id)) return
+      const rendered = createPoemPinImage(liftTier, state === 'selected')
+      if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
+    })
+  })
   map.addSource('tang-labels', {
     type: 'geojson',
     data: historicalLabelCollection(),
@@ -501,12 +593,28 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
     },
   })
   map.addLayer({
+    id: 'poem-elevated-pins',
+    type: 'symbol',
+    source: 'poems',
+    layout: {
+      'icon-image': ['get', 'pinImageId'],
+      'icon-anchor': 'bottom',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+      'icon-pitch-alignment': 'viewport',
+      'icon-rotation-alignment': 'viewport',
+      'symbol-sort-key': ['get', 'liftTier'],
+    },
+  })
+  map.addLayer({
     id: 'poem-cluster-counts',
     type: 'symbol',
     source: 'poems',
     filter: ['>', ['get', 'count'], 1],
     layout: {
-      'icon-image': ['concat', 'poem-count-', ['to-string', ['get', 'count']]],
+      'icon-image': ['get', 'countImageId'],
+      'icon-anchor': 'bottom',
+      'icon-offset': ['get', 'countOffset'],
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
       'icon-pitch-alignment': 'viewport',
@@ -522,8 +630,9 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
       'icon-image': ['get', 'imageId'],
       'icon-size': ['case', ['get', 'selected'], 1.14, 1],
       'icon-anchor': 'bottom',
-      'icon-offset': [0, -9],
-      'icon-allow-overlap': false,
+      'icon-offset': ['get', 'labelOffset'],
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
       'icon-padding': 3,
       'icon-pitch-alignment': 'viewport',
       'icon-rotation-alignment': 'viewport',
@@ -776,6 +885,7 @@ export function VerseScene({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
     const compact = window.matchMedia('(max-width: 680px)').matches
+    const elevatedPlaces = elevateNearbyPoemPlaces(poems)
     type WheelFocusPath = {
       poemId: string
       originZoom: number
@@ -932,12 +1042,14 @@ export function VerseScene({
       addHistoricalLayers(map, poems, selectedPoemRef.current.id)
       containerRef.current?.setAttribute('data-map-scope', 'tang-surroundings')
       containerRef.current?.setAttribute('data-boundary-rendered', 'false')
-      containerRef.current?.setAttribute('data-poem-point-style', 'layered-3d')
+      containerRef.current?.setAttribute('data-poem-point-style', 'elevated-3d')
       containerRef.current?.setAttribute(
         'data-poem-place-groups',
-        JSON.stringify(groupPoemsByPlace(poems).map((group) => ({
+        JSON.stringify(elevatedPlaces.map((group) => ({
           key: group.key,
           count: group.poems.length,
+          liftTier: group.liftTier,
+          hasNearbyPlace: group.hasNearbyPlace,
         }))),
       )
       containerRef.current?.setAttribute('data-poem-hit-ready', 'true')
@@ -967,24 +1079,46 @@ export function VerseScene({
       })
     })
     map.on('click', (event) => {
+      const directGroup = elevatedPlaces
+        .map((group) => {
+          const ground = map.project([group.longitude, group.latitude])
+          const head = {
+            x: ground.x,
+            y: ground.y - poemPinHeight(group.liftTier) + 12,
+          }
+          const headDistance = Math.hypot(event.point.x - head.x, event.point.y - head.y)
+          const baseDistance = Math.hypot(event.point.x - ground.x, event.point.y - ground.y)
+          return {
+            group,
+            score: Math.min(headDistance / 16, baseDistance / 22),
+          }
+        })
+        .filter((candidate) => candidate.score <= 1)
+        .sort((a, b) => a.score - b.score)[0]?.group
       const layers = ['poem-hit-target', 'poem-point-face', 'poem-points']
       if (map.getLayer('poem-place-labels')) layers.push('poem-place-labels')
-      const feature = map.queryRenderedFeatures(event.point, { layers })[0]
-      if (!feature) {
+      const feature = directGroup
+        ? undefined
+        : map.queryRenderedFeatures(event.point, { layers })[0]
+      if (!directGroup && !feature) {
         groupPickerRef.current?.remove()
         groupPickerRef.current = null
         return
       }
       let memberIds: string[] = []
-      try {
-        memberIds = JSON.parse(String(feature.properties?.memberIds ?? '[]')) as string[]
-      } catch {
-        memberIds = []
+      if (!directGroup) {
+        try {
+          memberIds = JSON.parse(String(feature?.properties?.memberIds ?? '[]')) as string[]
+        } catch {
+          memberIds = []
+        }
       }
-      const groupPoems = memberIds
-        .map((id) => poems.find((poem) => poem.id === id))
-        .filter((poem): poem is Poem => Boolean(poem))
-      const fallbackPoem = poems.find((poem) => poem.id === feature.properties?.id)
+      const groupPoems = directGroup?.poems
+        ?? memberIds
+          .map((id) => poems.find((poem) => poem.id === id))
+          .filter((poem): poem is Poem => Boolean(poem))
+      const fallbackPoem = directGroup?.poems[0]
+        ?? poems.find((poem) => poem.id === feature?.properties?.id)
       if (groupPoems.length <= 1) {
         groupPickerRef.current?.remove()
         groupPickerRef.current = null
@@ -1007,6 +1141,12 @@ export function VerseScene({
       map.getCanvas().style.cursor = 'pointer'
     })
     map.on('mouseleave', 'poem-hit-target', () => {
+      map.getCanvas().style.cursor = ''
+    })
+    map.on('mouseenter', 'poem-elevated-pins', () => {
+      map.getCanvas().style.cursor = 'pointer'
+    })
+    map.on('mouseleave', 'poem-elevated-pins', () => {
       map.getCanvas().style.cursor = ''
     })
     map.on('dragstart', () => {

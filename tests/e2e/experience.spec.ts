@@ -29,7 +29,16 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-hit-ready', 'true')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-scope', 'tang-surroundings')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-boundary-rendered', 'false')
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-point-style', 'layered-3d')
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-point-style', 'elevated-3d')
+  const placeGroups = JSON.parse(
+    await page.locator('.geographic-map').getAttribute('data-poem-place-groups') ?? '[]',
+  ) as Array<{ key: string; liftTier: number; hasNearbyPlace: boolean }>
+  const crowdedCapitalMarkers = placeGroups.filter((group) =>
+    ['changan', 'weicheng', 'pu-guanquelou'].includes(group.key),
+  )
+  expect(crowdedCapitalMarkers).toHaveLength(3)
+  expect(crowdedCapitalMarkers.every((group) => group.hasNearbyPlace)).toBe(true)
+  expect(new Set(crowdedCapitalMarkers.map((group) => group.liftTier)).size).toBe(3)
   await expect(page.locator('.map-legend, .interaction-hint, .release-note')).toHaveCount(0)
   expect(await page.locator('.geographic-map .maplibregl-marker').count()).toBeLessThanOrEqual(2)
   await expect(page.locator('canvas')).toHaveCSS('height', '960px')
@@ -55,6 +64,20 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await page.waitForTimeout(150)
   const mapBounds = await map.boundingBox()
   expect(mapBounds).not.toBeNull()
+  const initialPoemScreenPositions = JSON.parse(
+    await map.getAttribute('data-poem-screen-positions') ?? '{}',
+  ) as Record<string, { x: number; y: number }>
+  const weichengPoint = initialPoemScreenPositions['wang-wei-weicheng']
+  expect(weichengPoint).toBeTruthy()
+  // The crowded capital markers are clickable at their raised WebGL heads,
+  // not only at the geographic base point.
+  await page.mouse.click(
+    (mapBounds?.x ?? 0) + weichengPoint.x,
+    (mapBounds?.y ?? 0) + weichengPoint.y - 90,
+  )
+  await expect(page.getByRole('heading', { name: '送元二使安西' })).toBeVisible()
+  await expect(map).not.toHaveClass(/map-moving/, { timeout: 3_000 })
+  await page.waitForTimeout(100)
   const poemScreenPositions = JSON.parse(
     await map.getAttribute('data-poem-screen-positions') ?? '{}',
   ) as Record<string, { x: number; y: number }>
