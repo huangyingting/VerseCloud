@@ -12,6 +12,7 @@ import { useEffect, useRef } from 'react'
 import { tangMapLabels, tangRegionDivisions } from '../data/tangGeography'
 import { projectPoint } from '../lib/geo'
 import { elevateNearbyPoemPlaces } from '../lib/poemPlaces'
+import { emptyPoemRoute, poemRoute } from '../lib/poemRoute'
 import type { Poem, ScenePoint, Season } from '../types'
 
 interface VerseSceneProps {
@@ -21,6 +22,11 @@ interface VerseSceneProps {
   onSelectPoem: (poem: Poem) => void
   onFocusChange: (point: ScenePoint) => void
 }
+
+type LineLayerSpecification = Extract<StyleSpecification['layers'][number], { type: 'line' }>
+type LineGradientSpecification = NonNullable<
+  NonNullable<LineLayerSpecification['paint']>['line-gradient']
+>
 
 // Vite does not discover MapLibre's import.meta.url worker when the library is
 // loaded lazily. Importing it as an asset makes the production URL explicit.
@@ -363,6 +369,35 @@ function createPoemMarkerImage(liftTier: number, selected: boolean) {
   return { image: context.getImageData(0, 0, canvas.width, canvas.height), pixelRatio }
 }
 
+function routeInkGradient(progress: number): LineGradientSpecification {
+  return [
+    'case',
+    ['<=', ['line-progress'], progress],
+    'rgba(205, 184, 132, 0.58)',
+    'rgba(205, 184, 132, 0)',
+  ] as LineGradientSpecification
+}
+
+function routeFlowGradient(progress: number): LineGradientSpecification {
+  const head = Math.min(0.985, Math.max(0.015, progress))
+  const tail = Math.max(0, head - 0.2)
+  const shoulder = Math.max(tail + 0.001, head - 0.055)
+  return [
+    'interpolate', ['linear'], ['line-progress'],
+    tail, 'rgba(217, 181, 100, 0)',
+    shoulder, 'rgba(222, 188, 111, 0.5)',
+    head, 'rgba(255, 239, 190, 1)',
+    head + 0.025, 'rgba(255, 239, 190, 0)',
+  ] as LineGradientSpecification
+}
+
+const transparentRouteGradient = [
+  'case',
+  ['>=', ['line-progress'], 0],
+  'rgba(255, 239, 190, 0)',
+  'rgba(255, 239, 190, 0)',
+] as LineGradientSpecification
+
 function poemCollection(poems: Poem[], selectedPoemId?: string): GeoJSON.FeatureCollection<GeoJSON.Point> {
   const groups = elevateNearbyPoemPlaces(poems)
   return {
@@ -416,6 +451,56 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: st
       'line-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.28, 6, 0.5],
       'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.55, 6, 1.15],
       'line-dasharray': [1.2, 2.4],
+    },
+  })
+
+  map.addSource('poem-route', {
+    type: 'geojson',
+    data: emptyPoemRoute(),
+    lineMetrics: true,
+  })
+  map.addLayer({
+    id: 'poem-route-shadow',
+    type: 'line',
+    source: 'poem-route',
+    layout: {
+      'line-cap': 'round',
+      'line-join': 'round',
+    },
+    paint: {
+      'line-color': '#07100d',
+      'line-opacity': 0.46,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3.2, 7, 5.4],
+      'line-blur': 1.2,
+    },
+  })
+  map.addLayer({
+    id: 'poem-route-ink',
+    type: 'line',
+    source: 'poem-route',
+    layout: {
+      'line-cap': 'round',
+      'line-join': 'round',
+    },
+    paint: {
+      'line-gradient': routeInkGradient(0),
+      'line-opacity': 0.74,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1.1, 7, 1.8],
+    },
+  })
+  map.addLayer({
+    id: 'poem-route-flow',
+    type: 'line',
+    source: 'poem-route',
+    layout: {
+      'line-cap': 'round',
+      'line-join': 'round',
+    },
+    paint: {
+      'line-gradient': transparentRouteGradient,
+      'line-opacity': 0.92,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.8, 7, 4.5],
+      'line-blur': 0.7,
     },
   })
 
@@ -779,6 +864,9 @@ export function VerseScene({
   const introInProgressRef = useRef(false)
   const pendingFocusRef = useRef<Poem | null>(null)
   const selectedPoemRef = useRef(selectedPoem)
+  const journeyOriginRef = useRef(selectedPoem)
+  const routeAnimationFrameRef = useRef(0)
+  const routeSettleTimerRef = useRef(0)
   const seasonRef = useRef(season)
   const onSelectRef = useRef(onSelectPoem)
   const onFocusRef = useRef(onFocusChange)
@@ -963,6 +1051,8 @@ export function VerseScene({
       containerRef.current?.setAttribute('data-map-scope', 'tang-surroundings')
       containerRef.current?.setAttribute('data-boundary-rendered', 'false')
       containerRef.current?.setAttribute('data-poem-point-style', 'abstract-slip')
+      containerRef.current?.setAttribute('data-poem-route-renderer', 'webgl-gradient')
+      containerRef.current?.setAttribute('data-poem-route-state', 'idle')
       containerRef.current?.setAttribute(
         'data-poem-place-groups',
         JSON.stringify(elevatedPlaces.map((group) => ({
@@ -1105,6 +1195,14 @@ export function VerseScene({
 
     return () => {
       if (focusFrame) window.cancelAnimationFrame(focusFrame)
+      if (routeAnimationFrameRef.current) {
+        window.cancelAnimationFrame(routeAnimationFrameRef.current)
+        routeAnimationFrameRef.current = 0
+      }
+      if (routeSettleTimerRef.current) {
+        window.clearTimeout(routeSettleTimerRef.current)
+        routeSettleTimerRef.current = 0
+      }
       finishWheelFocus()
       wheelFocusPath = null
       canvas.removeEventListener('wheel', handleWheelFocus, true)
@@ -1118,6 +1216,7 @@ export function VerseScene({
       selectionInitializedRef.current = false
       introInProgressRef.current = false
       pendingFocusRef.current = null
+      journeyOriginRef.current = selectedPoemRef.current
       map.remove()
       mapRef.current = null
     }
@@ -1126,6 +1225,8 @@ export function VerseScene({
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+    const previousPoem = journeyOriginRef.current
+    journeyOriginRef.current = selectedPoem
     selectedMarkerRef.current?.remove()
     effectMarkerRef.current?.remove()
     groupPickerRef.current?.remove()
@@ -1145,6 +1246,71 @@ export function VerseScene({
       selectionInitializedRef.current = true
       return
     }
+
+    const routeSource = map.getSource('poem-route') as GeoJSONSource | undefined
+    if (routeSource && previousPoem.id !== selectedPoem.id) {
+      if (routeAnimationFrameRef.current) {
+        window.cancelAnimationFrame(routeAnimationFrameRef.current)
+        routeAnimationFrameRef.current = 0
+      }
+      if (routeSettleTimerRef.current) {
+        window.clearTimeout(routeSettleTimerRef.current)
+        routeSettleTimerRef.current = 0
+      }
+
+      const route = poemRoute(previousPoem, selectedPoem)
+      routeSource.setData(route)
+      containerRef.current?.setAttribute('data-poem-route-from', previousPoem.id)
+      containerRef.current?.setAttribute('data-poem-route-to', selectedPoem.id)
+
+      if (route.features.length === 0) {
+        containerRef.current?.setAttribute('data-poem-route-state', 'same-place')
+      } else {
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        map.setPaintProperty('poem-route-ink', 'line-gradient', routeInkGradient(0))
+        map.setPaintProperty('poem-route-flow', 'line-gradient', transparentRouteGradient)
+
+        if (reducedMotion) {
+          map.setPaintProperty('poem-route-ink', 'line-gradient', routeInkGradient(1))
+          containerRef.current?.setAttribute('data-poem-route-state', 'settled')
+        } else {
+          const startedAt = performance.now()
+          let lastPaintAt = 0
+          containerRef.current?.setAttribute('data-poem-route-state', 'animating')
+          const drawRoute = (now: number) => {
+            const linearProgress = Math.min(1, (now - startedAt) / 1_600)
+            if (linearProgress < 1 && now - lastPaintAt < 32) {
+              routeAnimationFrameRef.current = window.requestAnimationFrame(drawRoute)
+              return
+            }
+            const progress = linearProgress * linearProgress * (3 - 2 * linearProgress)
+            lastPaintAt = now
+            map.setPaintProperty('poem-route-ink', 'line-gradient', routeInkGradient(progress))
+            map.setPaintProperty('poem-route-flow', 'line-gradient', routeFlowGradient(progress))
+
+            if (linearProgress < 1) {
+              routeAnimationFrameRef.current = window.requestAnimationFrame(drawRoute)
+              return
+            }
+
+            routeAnimationFrameRef.current = 0
+            containerRef.current?.setAttribute('data-poem-route-state', 'settled')
+            routeSettleTimerRef.current = window.setTimeout(() => {
+              if (map.getLayer('poem-route-flow')) {
+                map.setPaintProperty(
+                  'poem-route-flow',
+                  'line-gradient',
+                  transparentRouteGradient,
+                )
+              }
+              routeSettleTimerRef.current = 0
+            }, 280)
+          }
+          routeAnimationFrameRef.current = window.requestAnimationFrame(drawRoute)
+        }
+      }
+    }
+
     if (introInProgressRef.current) {
       pendingFocusRef.current = selectedPoem
       return

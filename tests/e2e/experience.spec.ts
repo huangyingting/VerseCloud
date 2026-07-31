@@ -30,6 +30,11 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-scope', 'tang-surroundings')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-boundary-rendered', 'false')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-point-style', 'abstract-slip')
+  await expect(page.locator('.geographic-map')).toHaveAttribute(
+    'data-poem-route-renderer',
+    'webgl-gradient',
+  )
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-route-state', 'idle')
   const placeGroups = JSON.parse(
     await page.locator('.geographic-map').getAttribute('data-poem-place-groups') ?? '[]',
   ) as Array<{
@@ -83,6 +88,9 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
     (mapBounds?.y ?? 0) + weichengPoint.y - weichengMarker!.markerHeight + 12,
   )
   await expect(page.getByRole('heading', { name: '送元二使安西' })).toBeVisible()
+  await expect(map).toHaveAttribute('data-poem-route-from', 'du-fu-chun-wang')
+  await expect(map).toHaveAttribute('data-poem-route-to', 'wang-wei-weicheng')
+  await expect(map).toHaveAttribute('data-poem-route-state', 'settled', { timeout: 3_000 })
   await expect(map).not.toHaveClass(/map-moving/, { timeout: 3_000 })
   await page.waitForTimeout(100)
   const poemScreenPositions = JSON.parse(
