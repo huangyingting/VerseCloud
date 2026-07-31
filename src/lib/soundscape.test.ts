@@ -4,6 +4,7 @@ import { projectPoint } from './geo'
 import {
   computeSoundscapeMix,
   poemSoundscapeLabel,
+  poemSoundscapeProfile,
   soundscapeLabel,
 } from './soundscape'
 
@@ -26,6 +27,13 @@ describe('computeSoundscapeMix', () => {
 
   it('assigns every current poem a distinct background score', () => {
     const labels = poems.map(poemSoundscapeLabel)
+    const profiles = poems.map(poemSoundscapeProfile)
     expect(new Set(labels).size).toBe(poems.length)
+    expect(new Set(profiles.map((profile) => JSON.stringify(profile))).size)
+      .toBe(poems.length)
+    expect(new Set(profiles.map((profile) => profile.bpm)).size).toBeGreaterThanOrEqual(7)
+    expect(new Set(profiles.map((profile) => profile.waveform))).toEqual(
+      new Set(['sine', 'triangle', 'sawtooth', 'square']),
+    )
   })
 })

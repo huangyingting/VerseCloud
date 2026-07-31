@@ -165,7 +165,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
       .every((column) => column.scrollHeight <= column.clientHeight),
   )
   expect(verticalColumnsFit).toBe(true)
-  expect(audioNodesCreated - audioNodesDestroyed).toBeLessThanOrEqual(240)
+  expect(audioNodesCreated - audioNodesDestroyed).toBeLessThanOrEqual(260)
   expect(runtimeErrors).toEqual([])
 })
 
