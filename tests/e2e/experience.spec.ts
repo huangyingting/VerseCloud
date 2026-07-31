@@ -2,6 +2,12 @@ import { expect, test } from '@playwright/test'
 
 test('opens the 3D poetry experience and navigates between poems', async ({ page }) => {
   const runtimeErrors: string[] = []
+  const cdp = await page.context().newCDPSession(page)
+  let audioNodesCreated = 0
+  let audioNodesDestroyed = 0
+  await cdp.send('WebAudio.enable')
+  cdp.on('WebAudio.audioNodeCreated', () => { audioNodesCreated += 1 })
+  cdp.on('WebAudio.audioNodeWillBeDestroyed', () => { audioNodesDestroyed += 1 })
   page.on('pageerror', (error) => runtimeErrors.push(error.message))
   page.on('console', (message) => {
     if (message.type() === 'error' || message.text().includes('Context Lost')) {
@@ -159,6 +165,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
       .every((column) => column.scrollHeight <= column.clientHeight),
   )
   expect(verticalColumnsFit).toBe(true)
+  expect(audioNodesCreated - audioNodesDestroyed).toBeLessThanOrEqual(240)
   expect(runtimeErrors).toEqual([])
 })
 
