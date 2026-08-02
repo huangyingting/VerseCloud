@@ -27,7 +27,9 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   })
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-history-ready', 'true')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-hit-ready', 'true')
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-scope', 'tang-surroundings')
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-scope', 'classical-china')
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-dynasty', 'tang')
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-history-layer', 'tang-context')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-boundary-rendered', 'false')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-point-style', 'abstract-slip')
   await expect(page.locator('.geographic-map')).toHaveAttribute(
@@ -67,6 +69,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
     '残春烽火',
   )
   await expect(page.locator('.maplibregl-ctrl-attrib')).toHaveCount(0)
+  await expect(page.locator('.map-credits')).toContainText('© OpenStreetMap')
 
   const map = page.locator('.geographic-map')
   await expect(map).toHaveAttribute('data-intro-complete', 'true', { timeout: 8_000 })
@@ -176,9 +179,9 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.locator('main')).toHaveClass(/season-autumn/)
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-season', 'autumn')
 
-  await page.locator('[data-poem-select="li-bai-baidi"]').evaluate((button: HTMLButtonElement) => {
-    button.click()
-  })
+  await page.getByRole('button', { name: /诗库/ }).click()
+  await page.locator('[data-library-poem="li-bai-baidi"]').click()
+  await page.locator('.poem-library > header button').click()
   await expect(page.getByRole('heading', { name: '早发白帝城' })).toBeVisible()
   await expect(page.getByText('朝辞白帝彩云间，', { exact: true })).toBeVisible()
   await expect(page.getByText('千里江陵一日还。', { exact: true })).toBeVisible()
@@ -192,9 +195,9 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.locator('.geographic-map .poem-effect.effect-river-flight')).toBeVisible()
   await expect(page.locator('.poem-card')).toHaveCount(0)
 
-  await page.locator('[data-poem-select="wang-wei-weicheng"]').evaluate((button: HTMLButtonElement) => {
-    button.click()
-  })
+  await page.getByRole('button', { name: /诗库/ }).click()
+  await page.locator('[data-library-poem="wang-wei-weicheng"]').click()
+  await page.locator('.poem-library > header button').click()
   await expect(page.getByRole('heading', { name: '送元二使安西' })).toBeVisible()
   await expect(page.getByText('唐·王维', { exact: true })).toBeVisible()
   await expect(page.getByText('渭城·朝雨·柳色', { exact: true })).toBeVisible()
@@ -204,6 +207,122 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   )
   expect(verticalColumnsFit).toBe(true)
   expect(audioNodesCreated - audioNodesDestroyed).toBeLessThanOrEqual(260)
+  expect(runtimeErrors).toEqual([])
+})
+
+test('publishes and browses every literary period', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const runtimeErrors: string[] = []
+  page.on('pageerror', (error) => runtimeErrors.push(error.message))
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.text().includes('Context Lost')) {
+      runtimeErrors.push(message.text())
+    }
+  })
+
+  const periods = [
+    { id: 'pre-qin', label: '先秦', firstTitle: '关雎', count: 3 },
+    { id: 'han', label: '汉', firstTitle: '大风歌', count: 3 },
+    { id: 'wei-jin', label: '魏晋', firstTitle: '七步诗', count: 3 },
+    { id: 'southern-northern', label: '南北朝', firstTitle: '敕勒歌', count: 3 },
+    { id: 'sui', label: '隋', firstTitle: '人日思归', count: 3 },
+    { id: 'tang', label: '唐', firstTitle: '春望', count: 8 },
+    { id: 'five-dynasties', label: '五代', firstTitle: '虞美人', count: 3 },
+    { id: 'song', label: '宋', firstTitle: '水调歌头', count: 3 },
+    { id: 'yuan', label: '元', firstTitle: '天净沙·秋思', count: 3 },
+    { id: 'ming', label: '明', firstTitle: '石灰吟', count: 3 },
+    { id: 'qing', label: '清', firstTitle: '己亥杂诗·其五', count: 3 },
+  ]
+
+  await page.goto('/')
+  await expect(page.locator('.dynasty-nav button')).toHaveCount(periods.length)
+  await expect(page.getByText('十一段诗史 · 38处诗光')).toBeVisible()
+  await page.getByRole('button', { name: /展开诗卷/ }).click()
+
+  for (const period of periods) {
+    const periodButton = page.locator(`.dynasty-nav [data-dynasty="${period.id}"]`)
+    await periodButton.click()
+    await expect(periodButton).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-ready', 'true', {
+      timeout: 15_000,
+    })
+    await expect(page.locator('.geographic-map')).toHaveAttribute('data-dynasty', period.id)
+    await expect(page.getByRole('heading', { name: period.firstTitle, exact: true })).toBeVisible()
+    await page.getByRole('button', { name: /诗库/ }).click()
+    await expect(page.locator('.library-poems > button')).toHaveCount(period.count)
+    await expect(page.locator('.poem-library')).toContainText(period.label)
+    await expect(page.locator('.library-evidence')).toBeVisible()
+    await page.locator('.poem-library > header button').click()
+  }
+
+  await page.getByRole('button', { name: /诗库/ }).click()
+  await page.getByRole('searchbox', { name: '搜索当前时期的诗词' }).fill('袁枚')
+  await expect(page.locator('.library-poems > button')).toHaveCount(1)
+  await expect(page.locator('.library-search b')).toHaveText('1/3')
+  await page.locator('[data-library-poem="yuan-mei-moss"]').click()
+  await expect(page.getByRole('heading', { name: '苔', exact: true })).toBeVisible()
+  await expect(page.locator('.library-evidence')).toContainText('金陵随园')
+  expect(runtimeErrors).toEqual([])
+})
+
+test('keeps every poem readable on a reduced-motion mobile viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const runtimeErrors: string[] = []
+  page.on('pageerror', (error) => runtimeErrors.push(error.message))
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.text().includes('Context Lost')) {
+      runtimeErrors.push(message.text())
+    }
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: /展开诗卷/ }).click()
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-intro-complete', 'true', {
+    timeout: 15_000,
+  })
+
+  const periodIds = [
+    'pre-qin', 'han', 'wei-jin', 'southern-northern', 'sui', 'tang',
+    'five-dynasties', 'song', 'yuan', 'ming', 'qing',
+  ]
+  let visitedPoems = 0
+
+  for (const periodId of periodIds) {
+    await page.locator(`.dynasty-nav [data-dynasty="${periodId}"]`).click()
+    const map = page.locator(`.geographic-map[data-dynasty="${periodId}"]`)
+    await expect(map).toHaveAttribute('data-intro-complete', 'true', { timeout: 15_000 })
+    await page.getByRole('button', { name: /诗库/ }).click()
+    const poemIds = await page.locator('[data-library-poem]').evaluateAll((buttons) =>
+      buttons.map((button) => (button as HTMLElement).dataset.libraryPoem ?? ''),
+    )
+    await page.locator('.poem-library > header button').click()
+
+    for (const poemId of poemIds) {
+      await page.getByRole('button', { name: /诗库/ }).click()
+      await page.locator(`[data-library-poem="${poemId}"]`).click()
+      await page.waitForTimeout(60)
+      const layout = await page.locator('.map-poem-sign').evaluate((sign) => {
+        const bounds = sign.getBoundingClientRect()
+        const columns = [...sign.querySelectorAll('h1, .map-poem-author, .map-poem-lines p, footer')]
+        return {
+          insideViewport:
+            bounds.left >= -0.5
+            && bounds.top >= -0.5
+            && bounds.right <= window.innerWidth + 0.5
+            && bounds.bottom <= window.innerHeight + 0.5,
+          columnsFit: columns.every((column) => column.scrollHeight <= column.clientHeight + 1),
+        }
+      })
+      expect(layout, `${periodId}/${poemId}`).toEqual({
+        insideViewport: true,
+        columnsFit: true,
+      })
+      visitedPoems += 1
+    }
+  }
+
+  expect(visitedPoems).toBe(38)
   expect(runtimeErrors).toEqual([])
 })
 
@@ -222,7 +341,8 @@ test('keeps the WebGL scene alive on a narrow mobile viewport', async ({ page })
   })
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-history-ready', 'true')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-poem-hit-ready', 'true')
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-scope', 'tang-surroundings')
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-map-scope', 'classical-china')
+  await expect(page.locator('.geographic-map')).toHaveAttribute('data-dynasty', 'tang')
   await expect(page.locator('.geographic-map')).toHaveAttribute('data-boundary-rendered', 'false')
   await expect(page.locator('.map-legend, .interaction-hint, .release-note')).toHaveCount(0)
   await expect(page.locator('canvas')).toHaveCSS('height', '844px')

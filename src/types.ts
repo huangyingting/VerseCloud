@@ -1,4 +1,15 @@
-export type DynastyId = 'tang' | 'song' | 'yuan' | 'ming'
+export type DynastyId =
+  | 'pre-qin'
+  | 'han'
+  | 'wei-jin'
+  | 'southern-northern'
+  | 'sui'
+  | 'tang'
+  | 'five-dynasties'
+  | 'song'
+  | 'yuan'
+  | 'ming'
+  | 'qing'
 
 export type PlaceRelation =
   | 'composed_at'
@@ -50,6 +61,9 @@ export interface MapSnapshot {
   dynastyLabel: string
   eraLabel: string
   year: number
+  startYear: number
+  endYear: number
+  dateRange: string
   status: 'published' | 'planned'
   note: string
   boundary?: number[][][][]

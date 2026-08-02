@@ -29,7 +29,8 @@ body,
 }
 
 button,
-a {
+a,
+input {
   font: inherit;
 }
 
@@ -49,6 +50,17 @@ a:focus-visible {
   height: 100%;
   background: var(--ink);
   isolation: isolate;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .scene-layer {
@@ -333,41 +345,6 @@ a:focus-visible {
 @keyframes poem-picker-in {
   from { opacity: 0; scale: 0.82; }
   to { opacity: 1; scale: 1; }
-}
-
-.poem-access-list {
-  position: fixed;
-  z-index: 30;
-  top: 92px;
-  left: 16px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-.poem-access-list:focus-within {
-  display: grid;
-  width: min(310px, calc(100vw - 32px));
-  height: auto;
-  padding: 10px;
-  overflow: visible;
-  clip-path: none;
-  border: 1px solid var(--line);
-  background: rgb(10 19 15 / 96%);
-}
-
-.poem-access-list button {
-  padding: 7px 9px;
-  border: 0;
-  color: var(--paper-muted);
-  background: transparent;
-  text-align: left;
-}
-
-.poem-access-list button:focus {
-  color: #fff0c9;
-  background: rgb(195 165 106 / 12%);
 }
 
 .poem-effect {
@@ -733,6 +710,46 @@ a:focus-visible {
   letter-spacing: 0.32em;
 }
 
+.scene-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  padding: 28px;
+  color: #c9bea5;
+  background: radial-gradient(circle at center, #1e2d25, #0e1713 68%);
+  text-align: center;
+}
+
+.scene-error span {
+  color: #9f8654;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+}
+
+.scene-error h2 {
+  margin: 15px 0 8px;
+  color: #eee2c7;
+  font-size: clamp(24px, 4vw, 38px);
+  font-weight: 400;
+}
+
+.scene-error p {
+  margin: 0 0 22px;
+  color: #8e8b7d;
+  font-size: 12px;
+}
+
+.scene-error button {
+  min-height: 42px;
+  padding: 0 19px;
+  border: 1px solid rgb(206 181 125 / 48%);
+  color: #ded0b2;
+  background: rgb(155 123 67 / 16%);
+  cursor: pointer;
+}
+
 .vignette,
 .season-atmosphere,
 .paper-grain {
@@ -788,7 +805,7 @@ a:focus-visible {
   right: 0;
   min-height: 90px;
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto minmax(240px, 1fr);
+  grid-template-columns: minmax(156px, 0.55fr) minmax(280px, 2fr) minmax(250px, 0.7fr);
   align-items: center;
   padding: 18px 36px;
   border-bottom: 1px solid var(--line);
@@ -845,20 +862,30 @@ a:focus-visible {
 .dynasty-nav {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 0 10px;
+  justify-self: stretch;
+  gap: 7px;
+  min-width: 0;
+  padding: 0 12px 4px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
   border: 0;
   background: linear-gradient(90deg, transparent, rgb(7 14 11 / 38%), transparent);
 }
 
+.dynasty-nav::-webkit-scrollbar { display: none; }
+
 .dynasty-nav button {
   position: relative;
-  min-width: 32px;
+  flex: 0 0 auto;
+  min-width: 34px;
   min-height: 42px;
+  padding: 0 8px;
   border: 0;
   color: #918976;
   background: transparent;
   cursor: pointer;
+  white-space: nowrap;
   font-size: 16px;
   transition: color 180ms ease, background-color 180ms ease;
 }
@@ -882,25 +909,11 @@ a:focus-visible {
   transform: translateX(-50%);
 }
 
-.dynasty-nav button:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
-}
-
-.dynasty-nav button span {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 6px;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: 0.08em;
-}
-
 .top-actions {
   justify-self: end;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 11px;
 }
 
 .soundscape-status {
@@ -948,6 +961,34 @@ a:focus-visible {
   color: var(--paper-muted);
   background: rgb(15 25 20 / 68%);
   cursor: pointer;
+}
+
+.library-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  color: #d9cdb4;
+  background: rgb(15 25 20 / 68%);
+  cursor: pointer;
+  letter-spacing: 0.14em;
+}
+
+.library-button b {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 12px;
+  color: #f4dfb4;
+  background: rgb(176 139 74 / 22%);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .icon-button:disabled {
@@ -1076,349 +1117,256 @@ a:focus-visible {
   background: rgb(190 156 89 / 15%);
 }
 
-.poem-card {
+.map-credits {
   position: absolute;
-  z-index: 6;
-  top: 112px;
-  right: 28px;
-  width: min(392px, calc(100vw - 56px));
-  max-height: calc(100vh - 156px);
-  padding: 27px 27px 22px;
-  border: 1px solid rgb(221 200 155 / 21%);
-  background:
-    radial-gradient(circle at 18% 22%, rgb(193 167 111 / 8%), transparent 38%),
-    repeating-linear-gradient(90deg, transparent 0 27px, rgb(215 190 139 / 2.5%) 28px),
-    linear-gradient(135deg, rgb(46 52 41 / 94%), rgb(19 27 22 / 97%));
-  box-shadow: -8px 28px 85px rgb(0 0 0 / 34%), inset 0 0 70px rgb(160 133 77 / 3%);
-  backdrop-filter: none;
-  isolation: isolate;
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.poem-card-effect {
-  position: absolute;
-  z-index: 0;
-  top: 78px;
-  left: 74px;
-  opacity: 0.48;
-  scale: 0.9;
-  contain: layout style;
-  filter: saturate(0.82);
-  mask-image: radial-gradient(ellipse at center, #000 18%, rgb(0 0 0 / 78%) 56%, transparent 82%);
-}
-
-.poem-card-effect::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--effect-accent) 26%, transparent), transparent 70%);
-  transform: translate(-50%, -50%);
-  animation: effect-breathe 4.6s ease-in-out infinite;
-}
-
-.poem-meta,
-.vertical-reading,
-.evidence-block,
-.poem-controls {
-  position: relative;
-  z-index: 1;
-}
-
-.poem-card::before,
-.poem-card::after {
-  content: "";
-  position: absolute;
-  width: 13px;
-  height: 13px;
-  border-color: var(--gold);
-  opacity: 0.48;
-}
-
-.poem-card::before {
-  top: 7px;
-  left: 7px;
-  border-top: 1px solid;
-  border-left: 1px solid;
-}
-
-.poem-card::after {
-  right: 7px;
-  bottom: 7px;
-  border-right: 1px solid;
-  border-bottom: 1px solid;
-}
-
-.poem-card.collapsed {
-  transform: translateX(calc(100% + 28px));
-}
-
-.card-toggle {
-  position: absolute;
-  top: 12px;
-  left: -42px;
-  width: 42px;
-  height: 67px;
-  border: 1px solid var(--line);
-  border-right: 0;
-  color: var(--paper-muted);
-  background: rgb(19 29 24 / 90%);
-  cursor: pointer;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  writing-mode: vertical-rl;
-  z-index: 2;
-}
-
-.poem-meta {
+  z-index: 4;
+  right: 18px;
+  bottom: 10px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 13px;
-  border-bottom: 1px solid var(--line);
-}
-
-.place-chip {
-  display: inline-block;
-  margin-bottom: 12px;
-  padding: 4px 8px;
-  border: 1px solid rgb(121 170 160 / 28%);
-  color: #9bc1b9;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-}
-
-.poem-location {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.poem-location small {
-  color: #94896f;
-  font-size: 9px;
-  letter-spacing: 0.06em;
-}
-
-.vertical-reading {
-  display: flex;
-  flex-direction: row-reverse;
-  justify-content: flex-start;
-  gap: 13px;
-  min-height: 218px;
-  padding: 23px 3px 21px;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgb(195 165 106 / 35%) transparent;
-}
-
-.vertical-reading h1,
-.vertical-author,
-.poem-lines p {
-  margin: 0;
-  writing-mode: vertical-rl;
-  text-orientation: upright;
-}
-
-.vertical-reading h1 {
-  flex: none;
-  margin: 0;
-  color: #f3e8ce;
-  font-size: 29px;
-  font-weight: 400;
-  line-height: 1.2;
-  letter-spacing: 0.1em;
-}
-
-.vertical-author {
-  flex: none;
-  color: var(--paper-muted);
-  font-size: 11px;
-  line-height: 1.5;
-  letter-spacing: 0.06em;
-}
-
-.poem-count {
-  color: #d6bf8f;
-  font-size: 13px;
-  letter-spacing: 0.08em;
-}
-
-.poem-count small {
-  color: #6d6f65;
-  font-size: 10px;
-}
-
-.poem-lines {
-  display: flex;
-  flex: none;
-  flex-direction: row-reverse;
-  gap: 10px;
-  padding-right: 13px;
-  border-right: 1px solid var(--line);
-}
-
-.poem-lines p {
-  color: #e7dcc4;
-  font-size: 15px;
-  line-height: 1.55;
-  letter-spacing: 0.05em;
-}
-
-.poet-seal {
-  align-self: flex-end;
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 25px;
-  height: 25px;
-  margin: auto 2px 1px auto;
-  border: 1px solid rgb(223 165 146 / 45%);
-  color: #e1b1a5;
-  background: rgb(128 49 42 / 65%);
-  box-shadow: inset 0 0 0 2px rgb(43 12 10 / 18%);
-  font-size: 13px;
-  transform: rotate(-2deg);
-}
-
-.evidence-block {
-  padding: 11px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  color: #8f8d80;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 10px;
-  line-height: 1.65;
-}
-
-.evidence-block summary {
-  width: fit-content;
-  color: #a7997e;
-  cursor: pointer;
-  font-family: "Zhuque Fangsong (technical preview)", FangSong, serif;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  list-style: none;
-}
-
-.evidence-block summary::before {
-  content: "印";
-  display: inline-grid;
-  place-items: center;
-  width: 19px;
-  height: 19px;
-  margin-right: 8px;
-  border: 1px solid rgb(154 75 64 / 55%);
-  color: #c68f81;
-  font-size: 9px;
-}
-
-.evidence-block summary::after {
-  content: " · 展开地理考据";
-  color: #6f7469;
+  gap: 8px;
+  color: rgb(195 192 177 / 55%);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 8px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
 }
 
-.evidence-block[open] summary::after {
-  content: " · 收起地理考据";
-}
-
-.evidence-content {
-  padding-top: 12px;
-}
-
-.evidence-content > div {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.evidence-content > div > span {
-  padding: 3px 6px;
-  border: 1px solid rgb(255 255 255 / 8%);
-}
-
-.evidence-block .confidence.high {
-  color: #9ec7ad;
-  border-color: rgb(126 191 154 / 24%);
-}
-
-.evidence-block .confidence.medium {
-  color: #d0b979;
-  border-color: rgb(208 185 121 / 24%);
-}
-
-.evidence-block .confidence.low {
-  color: #c5977d;
-}
-
-.evidence-block p {
-  margin: 9px 0 7px;
-}
-
-.evidence-block a {
-  color: #789e97;
+.map-credits a {
+  color: inherit;
   text-decoration: none;
 }
 
-.poem-controls {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 14px;
-  margin-top: 18px;
-}
+.map-credits a:hover { color: #d7c9aa; }
 
-.poem-controls > button {
-  border: 0;
-  color: #a69f8d;
-  background: transparent;
-  cursor: pointer;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-}
-
-.progress-dots {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-}
-
-.progress-dots button {
-  position: relative;
-  width: 1px;
-  height: 11px;
+.library-scrim {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
   padding: 0;
   border: 0;
-  border-radius: 0;
-  background: #626557;
-  cursor: pointer;
-  transition: height 180ms ease, background 180ms ease;
+  background: rgb(2 7 5 / 46%);
+  cursor: default;
+  backdrop-filter: blur(2px);
+  animation: library-fade-in 180ms ease both;
 }
 
-.progress-dots button.active {
-  width: 1px;
-  height: 19px;
-  background: var(--gold);
-}
-
-.progress-dots button span {
+.poem-library {
   position: absolute;
+  z-index: 11;
+  top: 88px;
+  right: 0;
+  bottom: 0;
+  width: min(410px, calc(100vw - 28px));
+  display: flex;
+  flex-direction: column;
+  padding: 25px 24px 20px;
   overflow: hidden;
-  width: 1px;
-  height: 1px;
-  clip: rect(0 0 0 0);
+  border-left: 1px solid rgb(225 205 164 / 18%);
+  color: #eae0c9;
+  background:
+    linear-gradient(90deg, rgb(190 160 99 / 4%) 1px, transparent 1px),
+    linear-gradient(165deg, rgb(25 37 30 / 98%), rgb(7 14 11 / 98%));
+  background-size: 26px 100%, auto;
+  box-shadow: -24px 0 70px rgb(0 0 0 / 36%);
+  animation: library-slide-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.mobile-view-switch {
-  display: none;
+@keyframes library-slide-in {
+  from { transform: translateX(26px); opacity: 0; }
 }
+
+@keyframes library-fade-in {
+  from { opacity: 0; }
+}
+
+.poem-library > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.poem-library > header span {
+  color: #8c897c;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 8px;
+  letter-spacing: 0.24em;
+}
+
+.poem-library > header h2 {
+  margin: 4px 0 0;
+  color: #f3e5c7;
+  font-size: 31px;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+}
+
+.poem-library > header button {
+  width: 36px;
+  height: 36px;
+  padding: 0 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: #a9a18e;
+  background: rgb(255 255 255 / 3%);
+  cursor: pointer;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 200;
+}
+
+.period-note {
+  margin: 10px 0 17px;
+  color: #999280;
+  font-size: 11px;
+  line-height: 1.65;
+  letter-spacing: 0.05em;
+}
+
+.library-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.library-search input {
+  width: 100%;
+  height: 42px;
+  padding: 0 54px 0 13px;
+  border: 1px solid rgb(223 205 167 / 15%);
+  border-radius: 0;
+  outline: none;
+  color: #e9dfc9;
+  background: rgb(4 10 7 / 45%);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+}
+
+.library-search input::placeholder { color: #716f65; }
+.library-search input:focus { border-color: rgb(195 165 106 / 64%); }
+
+.library-search b {
+  position: absolute;
+  right: 12px;
+  color: #8f866f;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.library-poems {
+  flex: 1;
+  min-height: 116px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid rgb(225 205 164 / 10%);
+  scrollbar-color: rgb(195 165 106 / 30%) transparent;
+  scrollbar-width: thin;
+}
+
+.library-poems > button {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 28px minmax(80px, 0.8fr) minmax(120px, 1.2fr);
+  align-items: baseline;
+  gap: 8px;
+  min-height: 52px;
+  padding: 9px 6px;
+  border: 0;
+  border-bottom: 1px solid rgb(225 205 164 / 8%);
+  color: #a7a18f;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.library-poems > button::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: transparent;
+}
+
+.library-poems > button:hover,
+.library-poems > button.active {
+  color: #f0e3c8;
+  background: rgb(195 165 106 / 7%);
+}
+
+.library-poems > button.active::before { background: var(--gold); }
+
+.library-poems > button > span {
+  color: #625f56;
+  font-family: Georgia, serif;
+  font-size: 9px;
+}
+
+.library-poems > button strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-poems > button small {
+  overflow: hidden;
+  color: #7f7c71;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-empty {
+  margin: 26px 8px;
+  color: #827d6d;
+  font-size: 11px;
+  text-align: center;
+}
+
+.library-evidence {
+  flex: 0 0 auto;
+  margin-top: 15px;
+  padding: 15px;
+  border: 1px solid rgb(225 205 164 / 11%);
+  background: rgb(4 10 7 / 34%);
+}
+
+.library-evidence > span,
+.library-evidence > b {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--poem-accent, var(--gold)) 45%, transparent);
+  color: #cfc1a4;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.library-evidence > b {
+  border-color: rgb(121 170 160 / 22%);
+  color: #8fb6ae;
+}
+
+.library-evidence p {
+  margin: 10px 0;
+  color: #aaa493;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.library-evidence a {
+  color: #bba776;
+  font-size: 9px;
+  text-decoration: none;
+}
+
+.library-evidence a:hover { text-decoration: underline; }
 
 .entry-gate {
   position: absolute;
@@ -1497,7 +1445,7 @@ a:focus-visible {
   letter-spacing: 0.42em;
 }
 
-.gate-content h2 {
+.gate-content h1 {
   margin: 0;
   color: #f0e5cc;
   font-size: clamp(35px, 5.6vw, 64px);
@@ -1571,9 +1519,12 @@ a:focus-visible {
 
   .dynasty-nav {
     position: absolute;
-    top: 83px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 76px;
+    left: 0;
+    right: 0;
+    justify-self: auto;
+    padding: 4px 18px 7px;
+    background: linear-gradient(180deg, rgb(9 16 13 / 82%), rgb(9 16 13 / 22%));
   }
 
   .soundscape-status {
@@ -1609,7 +1560,25 @@ a:focus-visible {
 @media (max-width: 680px) {
   .brand strong { font-size: 17px; }
   .brand-seal { width: 37px; height: 37px; font-size: 20px; }
-  .dynasty-nav button { min-width: 48px; min-height: 35px; }
+  .topbar { padding: 12px 13px; }
+  .top-actions { gap: 7px; }
+  .library-button { min-height: 37px; padding: 0 10px; }
+  .library-button span { display: none; }
+  .icon-button { width: 37px; height: 37px; }
+  .dynasty-nav { padding-inline: 12px; }
+  .dynasty-nav button { min-width: 42px; min-height: 35px; padding-inline: 7px; font-size: 14px; }
+
+  .poem-library {
+    top: 111px;
+    width: 100%;
+    padding: 19px 16px 14px;
+    border-top: 1px solid rgb(225 205 164 / 18%);
+    border-left: 0;
+  }
+  .poem-library > header h2 { font-size: 26px; }
+  .period-note { margin-block: 7px 11px; }
+  .library-poems > button { grid-template-columns: 24px minmax(84px, 0.8fr) minmax(120px, 1.2fr); }
+  .library-evidence { margin-top: 10px; padding: 12px; }
 
   .map-poem-sign {
     gap: 4px;
@@ -1653,9 +1622,15 @@ a:focus-visible {
 
   .season-switch > span { display: none; }
   .season-switch button { width: 29px; height: 29px; }
+  .map-credits {
+    right: 8px;
+    bottom: 5px;
+    gap: 5px;
+    font-size: 6px;
+  }
 
   .gate-eyebrow { font-size: 9px; }
-  .gate-content h2 { font-size: 35px; }
+  .gate-content h1 { font-size: 35px; }
   .gate-content > p { font-size: 11px; }
   .contour-one { width: 112vw; }
   .contour-two { width: 84vw; }

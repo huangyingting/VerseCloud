@@ -9,6 +9,7 @@ import {
 import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
+import { dynastyLabels } from '../data/mapSnapshots'
 import { tangMapLabels, tangRegionDivisions } from '../data/tangGeography'
 import { projectPoint } from '../lib/geo'
 import { elevateNearbyPoemPlaces } from '../lib/poemPlaces'
@@ -32,7 +33,7 @@ type LineGradientSpecification = NonNullable<
 // loaded lazily. Importing it as an asset makes the production URL explicit.
 setWorkerUrl(mapWorkerUrl)
 
-const tangSurroundingsBounds: [[number, number], [number, number]] = [
+const classicalChinaBounds: [[number, number], [number, number]] = [
   [68, 16],
   [131, 53],
 ]
@@ -437,22 +438,29 @@ function poemCollection(poems: Poem[], selectedPoemId?: string): GeoJSON.Feature
   }
 }
 
-function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: string) {
-  map.addSource('tang-regions', {
-    type: 'geojson',
-    data: tangRegionDivisions,
-  })
-  map.addLayer({
-    id: 'tang-region-line',
-    type: 'line',
-    source: 'tang-regions',
-    paint: {
-      'line-color': '#c5af7d',
-      'line-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.28, 6, 0.5],
-      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.55, 6, 1.15],
-      'line-dasharray': [1.2, 2.4],
-    },
-  })
+function addHistoricalLayers(
+  map: MapLibreMap,
+  poems: Poem[],
+  selectedPoemId: string,
+  showTangContext: boolean,
+) {
+  if (showTangContext) {
+    map.addSource('tang-regions', {
+      type: 'geojson',
+      data: tangRegionDivisions,
+    })
+    map.addLayer({
+      id: 'tang-region-line',
+      type: 'line',
+      source: 'tang-regions',
+      paint: {
+        'line-color': '#c5af7d',
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.28, 6, 0.5],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.55, 6, 1.15],
+        'line-dasharray': [1.2, 2.4],
+      },
+    })
+  }
 
   map.addSource('poem-route', {
     type: 'geojson',
@@ -521,7 +529,12 @@ function addHistoricalLayers(map: MapLibreMap, poems: Poem[], selectedPoemId: st
   })
 }
 
-async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poems: Poem[]) {
+async function addWebglLabelLayers(
+  map: MapLibreMap,
+  container: HTMLElement,
+  poems: Poem[],
+  showTangContext: boolean,
+) {
   await document.fonts.ready
   try {
     if (!map.getSource('poems')) return
@@ -529,12 +542,14 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
     return
   }
 
-  tangMapLabels.forEach((label, index) => {
-    const id = `tang-label-${index}`
-    if (map.hasImage(id)) return
-    const rendered = createLabelImage(label.name, label.kind)
-    if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
-  })
+  if (showTangContext) {
+    tangMapLabels.forEach((label, index) => {
+      const id = `tang-label-${index}`
+      if (map.hasImage(id)) return
+      const rendered = createLabelImage(label.name, label.kind)
+      if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
+    })
+  }
   const poemGroups = elevateNearbyPoemPlaces(poems)
   poemGroups.forEach((group, index) => {
     const id = `poem-label-${index}`
@@ -558,44 +573,46 @@ async function addWebglLabelLayers(map: MapLibreMap, container: HTMLElement, poe
       if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
     })
   })
-  map.addSource('tang-labels', {
-    type: 'geojson',
-    data: historicalLabelCollection(),
-  })
-  map.addLayer({
-    id: 'tang-region-labels',
-    type: 'symbol',
-    source: 'tang-labels',
-    maxzoom: 4.45,
-    filter: ['==', ['get', 'kind'], 'region'],
-    layout: {
-      'icon-image': ['get', 'imageId'],
-      'icon-allow-overlap': false,
-      'icon-padding': 5,
-      'icon-pitch-alignment': 'viewport',
-      'icon-rotation-alignment': 'viewport',
-    },
-    paint: {
-      'icon-opacity': ['case', ['get', 'major'], 0.9, 0.66],
-    },
-  })
-  map.addLayer({
-    id: 'tang-prefecture-labels',
-    type: 'symbol',
-    source: 'tang-labels',
-    minzoom: 4.25,
-    filter: ['==', ['get', 'kind'], 'prefecture'],
-    layout: {
-      'icon-image': ['get', 'imageId'],
-      'icon-allow-overlap': false,
-      'icon-padding': 4,
-      'icon-pitch-alignment': 'viewport',
-      'icon-rotation-alignment': 'viewport',
-    },
-    paint: {
-      'icon-opacity': ['case', ['get', 'major'], 0.92, 0.72],
-    },
-  })
+  if (showTangContext) {
+    map.addSource('tang-labels', {
+      type: 'geojson',
+      data: historicalLabelCollection(),
+    })
+    map.addLayer({
+      id: 'tang-region-labels',
+      type: 'symbol',
+      source: 'tang-labels',
+      maxzoom: 4.45,
+      filter: ['==', ['get', 'kind'], 'region'],
+      layout: {
+        'icon-image': ['get', 'imageId'],
+        'icon-allow-overlap': false,
+        'icon-padding': 5,
+        'icon-pitch-alignment': 'viewport',
+        'icon-rotation-alignment': 'viewport',
+      },
+      paint: {
+        'icon-opacity': ['case', ['get', 'major'], 0.9, 0.66],
+      },
+    })
+    map.addLayer({
+      id: 'tang-prefecture-labels',
+      type: 'symbol',
+      source: 'tang-labels',
+      minzoom: 4.25,
+      filter: ['==', ['get', 'kind'], 'prefecture'],
+      layout: {
+        'icon-image': ['get', 'imageId'],
+        'icon-allow-overlap': false,
+        'icon-padding': 4,
+        'icon-pitch-alignment': 'viewport',
+        'icon-rotation-alignment': 'viewport',
+      },
+      paint: {
+        'icon-opacity': ['case', ['get', 'major'], 0.92, 0.72],
+      },
+    })
+  }
   map.addLayer({
     id: 'poem-location-markers',
     type: 'symbol',
@@ -668,8 +685,10 @@ function fitVerticalText(
   letterSpacingEm: number,
 ) {
   const characters = Math.max(1, [...value].length)
-  const fittedSize = columnHeight
-    / (characters + Math.max(0, characters - 1) * letterSpacingEm)
+  // Keep a small physical safety margin for CJK glyph ascenders, punctuation
+  // and browser sub-pixel rounding in vertical writing mode.
+  const fittedSize = (columnHeight
+    / (characters + Math.max(0, characters - 1) * letterSpacingEm)) * 0.92
   return Math.min(maximumSize, fittedSize)
 }
 
@@ -705,7 +724,7 @@ function sizeVerticalVerseMarker(element: HTMLElement, poem: Poem) {
     compact ? Math.min(19, fontSize * 1.48) : Math.min(25, fontSize * 1.52),
     0.12,
   )
-  const authorLabel = `唐·${poem.author}`
+  const authorLabel = `${dynastyLabels[poem.dynasty]}·${poem.author}`
   const metaLabel = `${compactVerticalLabel(poem.placeName)}·${compactVerticalLabel(poem.visualEffectLabel)}`
   const authorSize = fitVerticalText(authorLabel, columnHeight, compact ? 9 : 12, 0.05)
   const metaSize = fitVerticalText(metaLabel, columnHeight, compact ? 8 : 10, 0.04)
@@ -759,7 +778,7 @@ function createVerticalVerseMarker(poem: Poem) {
   heading.textContent = poem.title
   const author = document.createElement('p')
   author.className = 'map-poem-author'
-  author.textContent = `唐·${poem.author}`
+  author.textContent = `${dynastyLabels[poem.dynasty]}·${poem.author}`
   const lines = document.createElement('div')
   lines.className = 'map-poem-lines'
   lines.setAttribute('aria-label', poem.lines.join(''))
@@ -911,7 +930,7 @@ export function VerseScene({
       zoom: compact ? 3.55 : 4.2,
       pitch: compact ? 34 : 38,
       bearing: -8,
-      maxBounds: tangSurroundingsBounds,
+      maxBounds: classicalChinaBounds,
       maxPitch: 62,
       minZoom: compact ? 3.3 : 4,
       maxZoom: 8,
@@ -1047,8 +1066,14 @@ export function VerseScene({
     canvas.addEventListener('wheel', handleWheelFocus, { passive: true, capture: true })
 
     map.once('style.load', () => {
-      addHistoricalLayers(map, poems, selectedPoemRef.current.id)
-      containerRef.current?.setAttribute('data-map-scope', 'tang-surroundings')
+      const showTangContext = selectedPoemRef.current.dynasty === 'tang'
+      addHistoricalLayers(map, poems, selectedPoemRef.current.id, showTangContext)
+      containerRef.current?.setAttribute('data-map-scope', 'classical-china')
+      containerRef.current?.setAttribute('data-dynasty', selectedPoemRef.current.dynasty)
+      containerRef.current?.setAttribute(
+        'data-history-layer',
+        showTangContext ? 'tang-context' : 'poem-context',
+      )
       containerRef.current?.setAttribute('data-boundary-rendered', 'false')
       containerRef.current?.setAttribute('data-poem-point-style', 'abstract-slip')
       containerRef.current?.setAttribute('data-poem-route-renderer', 'webgl-gradient')
@@ -1065,12 +1090,29 @@ export function VerseScene({
       )
       containerRef.current?.setAttribute('data-poem-hit-ready', 'true')
       applySeasonPalette(map, seasonRef.current)
-      if (containerRef.current) void addWebglLabelLayers(map, containerRef.current, poems)
+      if (containerRef.current) {
+        void addWebglLabelLayers(map, containerRef.current, poems, showTangContext)
+      }
       updateMarkerDensity()
       containerRef.current?.setAttribute('data-map-ready', 'true')
       reportFocus()
       window.requestAnimationFrame(() => {
         containerRef.current?.classList.add('map-intro-moving')
+        let introFinished = false
+        const finishIntro = () => {
+          if (introFinished) return
+          introFinished = true
+          map.off('moveend', finishIntro)
+          introInProgressRef.current = false
+          containerRef.current?.classList.remove('map-intro-moving')
+          containerRef.current?.setAttribute('data-intro-complete', 'true')
+          const pendingPoem = pendingFocusRef.current
+          pendingFocusRef.current = null
+          focusSelectedPoem(map, pendingPoem ?? selectedPoemRef.current)
+        }
+        // Register before `easeTo`: MapLibre completes motion synchronously
+        // when the operating system requests reduced motion.
+        map.once('moveend', finishIntro)
         map.easeTo({
           center: compact ? [105.5, 33.2] : [101.5, 34.2],
           zoom: compact ? 3.72 : 4.45,
@@ -1078,14 +1120,6 @@ export function VerseScene({
           bearing: -10,
           duration: 2_400,
           easing: (time) => 1 - Math.pow(1 - time, 3),
-        })
-        map.once('moveend', () => {
-          introInProgressRef.current = false
-          containerRef.current?.classList.remove('map-intro-moving')
-          containerRef.current?.setAttribute('data-intro-complete', 'true')
-          const pendingPoem = pendingFocusRef.current
-          pendingFocusRef.current = null
-          if (pendingPoem) focusSelectedPoem(map, pendingPoem)
         })
       })
     })
@@ -1318,5 +1352,11 @@ export function VerseScene({
     focusSelectedPoem(map, selectedPoem)
   }, [poems, selectedPoem])
 
-  return <div ref={containerRef} className="geographic-map" aria-label="唐代疆域 WebGL 地形地图" />
+  return (
+    <div
+      ref={containerRef}
+      className="geographic-map"
+      aria-label={`${dynastyLabels[selectedPoem.dynasty]}诗词 WebGL 地形地图`}
+    />
+  )
 }

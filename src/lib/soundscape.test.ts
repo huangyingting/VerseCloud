@@ -25,12 +25,13 @@ describe('computeSoundscapeMix', () => {
     expect(mix.dominant).toBe('frontier')
   })
 
-  it('assigns every current poem a distinct background score', () => {
+  it('covers every visual motif with a stable soundscape profile', () => {
     const labels = poems.map(poemSoundscapeLabel)
     const profiles = poems.map(poemSoundscapeProfile)
-    expect(new Set(labels).size).toBe(poems.length)
+    const effects = new Set(poems.map((poem) => poem.visualEffect))
+    expect(new Set(labels).size).toBe(effects.size)
     expect(new Set(profiles.map((profile) => JSON.stringify(profile))).size)
-      .toBe(poems.length)
+      .toBe(effects.size)
     expect(new Set(profiles.map((profile) => profile.bpm)).size).toBeGreaterThanOrEqual(7)
     expect(new Set(profiles.map((profile) => profile.waveform))).toEqual(
       new Set(['sine', 'triangle', 'sawtooth', 'square']),
