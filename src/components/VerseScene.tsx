@@ -427,7 +427,7 @@ function poemCollection(poems: Poem[], selectedPoemId?: string): GeoJSON.Feature
           selected,
           priority: selected
             ? 0
-            : (index < 3 || representative.id === 'cui-hao-huanghelou' ? 1 : 2),
+            : (index < 12 || representative.id === 'cui-hao-huanghelou' ? 1 : 2),
         },
         geometry: {
           type: 'Point',
@@ -627,6 +627,17 @@ async function addWebglLabelLayers(
       'icon-rotation-alignment': 'viewport',
       'symbol-sort-key': ['get', 'liftTier'],
     },
+    paint: {
+      // Keep a legible overview: the selected poem and a representative set
+      // remain visible, while dense local markers progressively appear as the
+      // reader zooms in. The library still exposes every work at every zoom.
+      'icon-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        4.8, ['case', ['get', 'selected'], 1, ['<=', ['get', 'priority'], 1], 0.9, 0],
+        5.2, ['case', ['get', 'selected'], 1, ['<=', ['get', 'priority'], 1], 0.9, 0.34],
+        5.7, ['case', ['get', 'selected'], 1, ['<=', ['get', 'priority'], 1], 0.9, 0.82],
+      ],
+    },
   })
   map.addLayer({
     id: 'poem-cluster-counts',
@@ -642,15 +653,51 @@ async function addWebglLabelLayers(
       'icon-pitch-alignment': 'viewport',
       'icon-rotation-alignment': 'viewport',
     },
+    paint: {
+      'icon-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        4.8, ['case', ['get', 'selected'], 1, ['<=', ['get', 'priority'], 1], 0.9, 0],
+        5.2, ['case', ['get', 'selected'], 1, ['<=', ['get', 'priority'], 1], 0.9, 0.34],
+        5.7, ['case', ['get', 'selected'], 1, ['<=', ['get', 'priority'], 1], 0.9, 0.82],
+      ],
+    },
   })
   map.addLayer({
     id: 'poem-place-labels',
     type: 'symbol',
     source: 'poems',
     minzoom: 3.3,
+    filter: ['==', ['get', 'selected'], false],
     layout: {
       'icon-image': ['get', 'imageId'],
-      'icon-size': ['case', ['get', 'selected'], 1.14, 1],
+      'icon-size': 1,
+      'icon-anchor': 'bottom',
+      'icon-offset': ['get', 'labelOffset'],
+      'icon-allow-overlap': false,
+      'icon-ignore-placement': false,
+      'icon-padding': 7,
+      'icon-pitch-alignment': 'viewport',
+      'icon-rotation-alignment': 'viewport',
+      'symbol-sort-key': ['get', 'priority'],
+    },
+    paint: {
+      'icon-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        4.8, ['case', ['<=', ['get', 'priority'], 1], 0.82, 0],
+        5.2, ['case', ['<=', ['get', 'priority'], 1], 0.82, 0.42],
+        5.7, 0.82,
+      ],
+    },
+  })
+  map.addLayer({
+    id: 'poem-selected-place-label',
+    type: 'symbol',
+    source: 'poems',
+    minzoom: 3.3,
+    filter: ['==', ['get', 'selected'], true],
+    layout: {
+      'icon-image': ['get', 'imageId'],
+      'icon-size': 1.14,
       'icon-anchor': 'bottom',
       'icon-offset': ['get', 'labelOffset'],
       'icon-allow-overlap': true,
@@ -658,12 +705,12 @@ async function addWebglLabelLayers(
       'icon-padding': 3,
       'icon-pitch-alignment': 'viewport',
       'icon-rotation-alignment': 'viewport',
-      'symbol-sort-key': ['get', 'priority'],
     },
     paint: {
-      'icon-opacity': ['case', ['get', 'selected'], 1, 0.88],
+      'icon-opacity': 1,
     },
   })
+  container.setAttribute('data-poem-density-policy', 'progressive-disclosure')
   container.setAttribute('data-history-ready', 'true')
 }
 
@@ -900,9 +947,12 @@ function createPoemGroupPicker(
   element.append(center)
 
   poems.forEach((poem, index) => {
-    const angle = poems.length === 2
-      ? (index === 0 ? -155 : -25)
-      : -90 + (360 / poems.length) * index
+    // Fan choices into the lower semicircle. The verse slip grows upward from
+    // the same geographic anchor, so an upper choice would cover its final
+    // columns and make the transient selection state hard to read.
+    const angle = poems.length === 1
+      ? 90
+      : 20 + (140 / (poems.length - 1)) * index
     const button = document.createElement('button')
     button.type = 'button'
     button.className = 'poem-group-choice'
@@ -1222,6 +1272,7 @@ export function VerseScene({
       const directGroup = findMarkerGroup(event.point)
       const layers = ['poem-hit-target']
       if (map.getLayer('poem-place-labels')) layers.push('poem-place-labels')
+      if (map.getLayer('poem-selected-place-label')) layers.push('poem-selected-place-label')
       const feature = directGroup
         ? undefined
         : map.queryRenderedFeatures(event.point, { layers })[0]
@@ -1267,7 +1318,10 @@ export function VerseScene({
         map.getCanvas().style.cursor = 'pointer'
         return
       }
-      const labelLayers = map.getLayer('poem-place-labels') ? ['poem-place-labels'] : []
+      const labelLayers = [
+        map.getLayer('poem-place-labels') ? 'poem-place-labels' : '',
+        map.getLayer('poem-selected-place-label') ? 'poem-selected-place-label' : '',
+      ].filter(Boolean)
       const overLabel = labelLayers.length > 0
         && map.queryRenderedFeatures(event.point, { layers: labelLayers }).length > 0
       map.getCanvas().style.cursor = overLabel ? 'pointer' : ''

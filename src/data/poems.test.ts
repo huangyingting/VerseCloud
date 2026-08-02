@@ -5,6 +5,12 @@ import { schoolPoems, schoolPoemTextKey } from './schoolPoems'
 import { schoolPoemSeeds } from './schoolPoems.generated'
 import { schoolPoemPlaceCorrections } from './schoolPoemPlaces'
 
+const genericCityLabels = new Set([
+  '长安', '洛阳', '扬州', '苏州', '杭州', '成都', '汴京', '临安城',
+  '永嘉', '宜州', '金陵', '京师', '镇江', '凤翔', '高邮', '平城',
+  '沛县', '溧阳', '渭城', '邺城', '朝歌', '丰镐',
+])
+
 describe('curated poem corpus', () => {
   it('publishes every literary period with multiple browsable works', () => {
     expect(snapshots).toHaveLength(11)
@@ -76,6 +82,7 @@ describe('curated poem corpus', () => {
 
     poems.forEach((poem) => {
       expect(poem.placeName).not.toMatch(forbiddenGenericNames)
+      expect(genericCityLabels.has(poem.placeName), `${poem.title} uses broad city label`).toBe(false)
       expect(poem.evidence).not.toMatch(/地图偏移|避免作品重叠/u)
 
       const existing = places.get(poem.placeId)
@@ -86,6 +93,31 @@ describe('curated poem corpus', () => {
       } else {
         places.set(poem.placeId, poem)
       }
+    })
+  })
+
+  it('keeps source-reviewed corrections for every previously generic or incorrect anchor', () => {
+    const bySchoolSourceId = new Map(
+      schoolPoems.map((poem) => [poem.id.replace(/^school-/, ''), poem]),
+    )
+
+    const expected = {
+      // 古诗文网创作背景明确到写作地、行旅节点或候选古址。
+      '2d0c9ade951e': ['xuchang-jiandu', '许都 · 建安文人聚居区'],
+      'ee1bd6238d4a': ['shaoxing-dudufu', '越州 · 大都督府送别处'],
+      'e4cd80aceb52': ['wujiang-pavilion', '和州 · 乌江亭'],
+      'f92fb36ff846': ['deqing-xinshi', '德清 · 新市徐公店'],
+      '4bb194abd528': ['changzhou-yamen', '常州 · 州署宅院'],
+      '85f036fcc038': ['huangmei-caishan', '黄梅 · 蔡山江心寺'],
+      '857567307e6a': ['kuizhou-office', '夔州 · 白帝城州署'],
+      'eda29e11ff49': ['shangqiu-yingtian', '应天府 · 府署西园'],
+    } as const
+
+    Object.entries(expected).forEach(([sourceId, [placeId, placeName]]) => {
+      const poem = bySchoolSourceId.get(sourceId)
+      expect(poem, sourceId).toBeDefined()
+      expect(poem?.placeId, sourceId).toBe(placeId)
+      expect(poem?.placeName, sourceId).toBe(placeName)
     })
   })
 

@@ -36,7 +36,7 @@ describe('groupPoemsByPlace', () => {
     const tangPoems = poems.filter((poem) => fixtureIds.has(poem.id))
     const layouts = elevateNearbyPoemPlaces(tangPoems)
     const byKey = new Map(layouts.map((place) => [place.key, place]))
-    const changan = byKey.get('changan')
+    const changan = byKey.get('changan-fallen-city')
     const weicheng = byKey.get('weicheng')
     const guanquelou = byKey.get('puzhou-guanquelou')
     const distant = byKey.get('suzhou-fengqiao')

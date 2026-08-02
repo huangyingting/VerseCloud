@@ -39,9 +39,10 @@ button {
 }
 
 button:focus-visible,
-a:focus-visible {
-  outline: 1px solid var(--gold);
-  outline-offset: 4px;
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid #e0bd76;
+  outline-offset: 3px;
 }
 
 .app-shell {
@@ -123,8 +124,8 @@ a:focus-visible {
   bottom: 22px;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 1px solid rgb(211 188 135 / 28%);
   border-radius: 50%;
@@ -825,6 +826,7 @@ a:focus-visible {
   align-items: center;
   gap: 12px;
   width: fit-content;
+  min-height: 44px;
   color: var(--paper);
   text-decoration: none;
 }
@@ -881,8 +883,8 @@ a:focus-visible {
 .dynasty-nav button {
   position: relative;
   flex: 0 0 auto;
-  min-width: 34px;
-  min-height: 42px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0 8px;
   border: 0;
   color: #918976;
@@ -957,8 +959,8 @@ a:focus-visible {
 }
 
 .icon-button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--line);
   border-radius: 50%;
   color: var(--paper-muted);
@@ -970,7 +972,7 @@ a:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--line);
   color: #d9cdb4;
@@ -1104,8 +1106,8 @@ a:focus-visible {
 }
 
 .season-switch button {
-  width: 31px;
-  height: 31px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   color: #7f7b6d;
@@ -1158,7 +1160,7 @@ a:focus-visible {
   top: 88px;
   right: 0;
   bottom: 0;
-  width: min(410px, calc(100vw - 28px));
+  width: min(450px, calc(100vw - 28px));
   display: flex;
   flex-direction: column;
   padding: 25px 24px 20px;
@@ -1189,9 +1191,9 @@ a:focus-visible {
 }
 
 .poem-library > header span {
-  color: #8c897c;
+  color: #aaa391;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: 0.24em;
 }
 
@@ -1204,8 +1206,8 @@ a:focus-visible {
 }
 
 .poem-library > header button {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0 0 4px;
   border: 1px solid var(--line);
   border-radius: 50%;
@@ -1219,8 +1221,8 @@ a:focus-visible {
 
 .period-note {
   margin: 10px 0 17px;
-  color: #999280;
-  font-size: 11px;
+  color: #b8ad96;
+  font-size: 12px;
   line-height: 1.65;
   letter-spacing: 0.05em;
 }
@@ -1233,14 +1235,14 @@ a:focus-visible {
 
 .curriculum-filter button {
   min-width: 50px;
-  height: 28px;
+  min-height: 44px;
   padding: 0 10px;
   border: 1px solid rgb(223 205 167 / 14%);
-  color: #868174;
+  color: #aaa392;
   background: rgb(4 10 7 / 24%);
   cursor: pointer;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.12em;
 }
 
@@ -1260,7 +1262,7 @@ a:focus-visible {
 
 .library-search input {
   width: 100%;
-  height: 42px;
+  height: 48px;
   padding: 0 54px 0 13px;
   border: 1px solid rgb(223 205 167 / 15%);
   border-radius: 0;
@@ -1268,18 +1270,18 @@ a:focus-visible {
   color: #e9dfc9;
   background: rgb(4 10 7 / 45%);
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 11px;
+  font-size: 13px;
 }
 
-.library-search input::placeholder { color: #716f65; }
+.library-search input::placeholder { color: #999384; }
 .library-search input:focus { border-color: rgb(195 165 106 / 64%); }
 
 .library-search b {
   position: absolute;
   right: 12px;
-  color: #8f866f;
+  color: #b0a182;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 500;
 }
 
@@ -1300,11 +1302,11 @@ a:focus-visible {
   grid-template-columns: 28px minmax(80px, 0.8fr) minmax(120px, 1.2fr);
   align-items: baseline;
   gap: 8px;
-  min-height: 52px;
+  min-height: 56px;
   padding: 9px 6px;
   border: 0;
   border-bottom: 1px solid rgb(225 205 164 / 8%);
-  color: #a7a18f;
+  color: #c1b7a1;
   background: transparent;
   cursor: pointer;
   text-align: left;
@@ -1329,14 +1331,14 @@ a:focus-visible {
 .library-poems > button.active::before { background: var(--gold); }
 
 .library-poems > button > span {
-  color: #625f56;
+  color: #8e887b;
   font-family: Georgia, serif;
   font-size: 9px;
 }
 
 .library-poems > button strong {
   overflow: hidden;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1347,8 +1349,8 @@ a:focus-visible {
   align-items: center;
   gap: 5px;
   overflow: hidden;
-  color: #7f7c71;
-  font-size: 9px;
+  color: #a39d8d;
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1369,8 +1371,9 @@ a:focus-visible {
 
 .library-empty {
   margin: 26px 8px;
-  color: #827d6d;
-  font-size: 11px;
+  color: #b9af9a;
+  font-size: 13px;
+  line-height: 1.7;
   text-align: center;
 }
 
@@ -1389,7 +1392,7 @@ a:focus-visible {
   padding: 4px 7px;
   border: 1px solid color-mix(in srgb, var(--poem-accent, var(--gold)) 45%, transparent);
   color: #cfc1a4;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 400;
   letter-spacing: 0.08em;
 }
@@ -1401,14 +1404,17 @@ a:focus-visible {
 
 .library-evidence p {
   margin: 10px 0;
-  color: #aaa493;
-  font-size: 10px;
+  color: #c1b7a1;
+  font-size: 12px;
   line-height: 1.7;
 }
 
 .library-evidence a {
-  color: #bba776;
-  font-size: 9px;
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  color: #d0b674;
+  font-size: 11px;
   text-decoration: none;
 }
 
@@ -1504,8 +1510,8 @@ a:focus-visible {
 .gate-content > p {
   max-width: 510px;
   margin: 25px auto 31px;
-  color: #9d9a89;
-  font-size: 13px;
+  color: #b9b3a0;
+  font-size: 14px;
   line-height: 1.9;
   letter-spacing: 0.08em;
 }
@@ -1540,9 +1546,9 @@ a:focus-visible {
 
 .enter-button i {
   margin-top: 6px;
-  color: #918d7b;
+  color: #b9b19a;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 8px;
+  font-size: 10px;
   font-style: normal;
   letter-spacing: 0.14em;
 }
@@ -1550,9 +1556,9 @@ a:focus-visible {
 .gate-content > small {
   display: block;
   margin-top: 14px;
-  color: #61675f;
+  color: #92988d;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: 0.15em;
 }
 
@@ -1605,17 +1611,17 @@ a:focus-visible {
 
 @media (max-width: 680px) {
   .brand strong { font-size: 17px; }
-  .brand-seal { width: 37px; height: 37px; font-size: 20px; }
+  .brand-seal { width: 40px; height: 40px; font-size: 20px; }
   .topbar { padding: 12px 13px; }
   .top-actions { gap: 7px; }
-  .library-button { min-height: 37px; padding: 0 10px; }
+  .library-button { min-height: 44px; padding: 0 10px; }
   .library-button span { display: none; }
-  .icon-button { width: 37px; height: 37px; }
+  .icon-button { width: 44px; height: 44px; }
   .dynasty-nav { padding-inline: 12px; }
-  .dynasty-nav button { min-width: 42px; min-height: 35px; padding-inline: 7px; font-size: 14px; }
+  .dynasty-nav button { min-width: 44px; min-height: 44px; padding-inline: 7px; font-size: 14px; }
 
   .poem-library {
-    top: 111px;
+    top: 131px;
     width: 100%;
     padding: 19px 16px 14px;
     border-top: 1px solid rgb(225 205 164 / 18%);
@@ -1625,6 +1631,7 @@ a:focus-visible {
   .period-note { margin-block: 7px 11px; }
   .library-poems > button { grid-template-columns: 24px minmax(84px, 0.8fr) minmax(120px, 1.2fr); }
   .library-evidence { margin-top: 10px; padding: 12px; }
+  .library-evidence a { min-height: 44px; }
 
   .map-poem-sign {
     gap: 4px;
@@ -1659,7 +1666,7 @@ a:focus-visible {
   .maplibregl-ctrl-bottom-right { right: 8px; bottom: 51px; }
 
   .season-switch {
-    top: 130px;
+    top: 139px;
     right: 12px;
     bottom: auto;
     left: auto;
@@ -1667,7 +1674,7 @@ a:focus-visible {
   }
 
   .season-switch > span { display: none; }
-  .season-switch button { width: 29px; height: 29px; }
+  .season-switch button { width: 44px; height: 44px; }
   .map-credits {
     right: 8px;
     bottom: 5px;
@@ -1677,7 +1684,7 @@ a:focus-visible {
 
   .gate-eyebrow { font-size: 9px; }
   .gate-content h1 { font-size: 35px; }
-  .gate-content > p { font-size: 11px; }
+  .gate-content > p { font-size: 13px; }
   .contour-one { width: 112vw; }
   .contour-two { width: 84vw; }
   .contour-three { width: 132vw; }

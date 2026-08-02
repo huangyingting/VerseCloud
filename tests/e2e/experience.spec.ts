@@ -46,7 +46,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
     hasNearbyPlace: boolean
   }>
   const crowdedCapitalMarkers = placeGroups.filter((group) =>
-    ['changan', 'weicheng', 'puzhou-guanquelou'].includes(group.key),
+    ['changan-fallen-city', 'weicheng', 'puzhou-guanquelou'].includes(group.key),
   )
   expect(crowdedCapitalMarkers).toHaveLength(3)
   expect(crowdedCapitalMarkers.every((group) => group.hasNearbyPlace)).toBe(true)
@@ -200,7 +200,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await page.locator('.poem-library > header button').click()
   await expect(page.getByRole('heading', { name: '送元二使安西' })).toBeVisible()
   await expect(page.getByText('唐·王维', { exact: true })).toBeVisible()
-  await expect(page.getByText('渭城·朝雨·柳色', { exact: true })).toBeVisible()
+  await expect(page.getByText('渭城·送别客舍·朝雨·柳色', { exact: true })).toBeVisible()
   const verticalColumnsFit = await page.locator('.map-poem-sign').evaluate((sign) =>
     [...sign.querySelectorAll('h1, .map-poem-author, .map-poem-lines p, footer')]
       .every((column) => column.scrollHeight <= column.clientHeight),
@@ -260,8 +260,14 @@ test('publishes and browses every literary period', async ({ page }) => {
   await expect(page.locator('.library-poems > button')).toHaveCount(2)
   await expect(page.locator('.library-search b')).toHaveText('2/10')
   await page.locator('[data-library-poem="yuan-mei-moss"]').click()
-  await expect(page.getByRole('heading', { name: '苔', exact: true })).toBeVisible()
+  await expect(page.locator('[data-library-poem="yuan-mei-moss"]')).toHaveAttribute(
+    'aria-current',
+    'true',
+  )
   await expect(page.locator('.library-evidence')).toContainText('金陵随园')
+  await page.locator('.poem-library > header button').click()
+  await expect(page.getByRole('heading', { name: '苔', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /打开诗库/ }).click()
   await page.getByRole('searchbox', { name: '搜索当前时期的诗词' }).fill('')
   await page.getByRole('button', { name: '小学', exact: true }).click()
   await expect(page.locator('.library-search b')).toHaveText('6/10')

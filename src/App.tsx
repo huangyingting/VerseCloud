@@ -54,6 +54,9 @@ export function App() {
   const focusPoint = useRef<ScenePoint>(initialFocus)
   const engine = useRef<SoundscapeEngine | null>(null)
   const dynastyNavRef = useRef<HTMLElement>(null)
+  const libraryButtonRef = useRef<HTMLButtonElement>(null)
+  const libraryPanelRef = useRef<HTMLElement>(null)
+  const libraryWasOpenRef = useRef(false)
   const dynastyPoems = useMemo(
     () => poems.filter((poem) => poem.dynasty === activeDynasty),
     [activeDynasty],
@@ -146,12 +149,45 @@ export function App() {
   }, [activeDynasty])
 
   useEffect(() => {
-    if (!libraryOpen) return
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setLibraryOpen(false)
+    if (!libraryOpen) {
+      if (libraryWasOpenRef.current) {
+        libraryWasOpenRef.current = false
+        window.requestAnimationFrame(() => libraryButtonRef.current?.focus())
+      }
+      return
     }
-    window.addEventListener('keydown', closeOnEscape)
-    return () => window.removeEventListener('keydown', closeOnEscape)
+
+    libraryWasOpenRef.current = true
+    const keepFocusInLibrary = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setLibraryOpen(false)
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const panel = libraryPanelRef.current
+      if (!panel) return
+      const focusable = [...panel.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), input:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])',
+      )].filter((element) => element.getClientRects().length > 0)
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (!first || !last) return
+
+      if (!panel.contains(document.activeElement)) {
+        event.preventDefault()
+        first.focus()
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    window.addEventListener('keydown', keepFocusInLibrary)
+    return () => window.removeEventListener('keydown', keepFocusInLibrary)
   }, [libraryOpen])
 
   useEffect(() => {
@@ -162,7 +198,11 @@ export function App() {
 
   return (
     <main id="top" className={`app-shell season-${season}`}>
-      <div className="scene-layer">
+      <div
+        className="scene-layer"
+        inert={!entered || libraryOpen ? true : undefined}
+        aria-hidden={!entered || libraryOpen ? true : undefined}
+      >
         {entered && (
           <SceneBoundary resetKey={activeDynasty}>
             <Suspense fallback={<div className="scene-loading">山河入卷中…</div>}>
@@ -182,7 +222,11 @@ export function App() {
       <div className="season-atmosphere" aria-hidden="true" />
       <div className="paper-grain" aria-hidden="true" />
 
-      <header className="topbar">
+      <header
+        className="topbar"
+        inert={!entered || libraryOpen ? true : undefined}
+        aria-hidden={!entered || libraryOpen ? true : undefined}
+      >
         <a className="brand" href="#top" aria-label="诗云首页">
           <span className="brand-seal">诗</span>
           <span>
@@ -222,6 +266,7 @@ export function App() {
             </span>
           </div>
           <button
+            ref={libraryButtonRef}
             type="button"
             className="library-button"
             aria-label={libraryOpen ? '关闭诗库' : `打开诗库，共${poems.length}首`}
@@ -246,6 +291,7 @@ export function App() {
 
       <aside
         className="era-panel"
+        aria-hidden={!entered || libraryOpen ? true : undefined}
         aria-live="polite"
         aria-label={`${selectedPoem.title}年代`}
         style={{ '--era-progress': `${eraProgress.toFixed(1)}%` } as CSSProperties}
@@ -261,7 +307,12 @@ export function App() {
       </aside>
 
       {entered && (
-        <section className="season-switch" aria-label="四时场景">
+        <section
+          className="season-switch"
+          aria-label="四时场景"
+          inert={libraryOpen ? true : undefined}
+          aria-hidden={libraryOpen ? true : undefined}
+        >
           <span>四时</span>
           <div>
             {seasons.map((item) => (
@@ -281,7 +332,12 @@ export function App() {
       )}
 
       {entered && (
-        <footer className="map-credits" aria-label="地图数据来源">
+        <footer
+          className="map-credits"
+          aria-label="地图数据来源"
+          inert={libraryOpen ? true : undefined}
+          aria-hidden={libraryOpen ? true : undefined}
+        >
           <span>地形 Natural Earth</span>
           <a href="https://openfreemap.org/" target="_blank" rel="noreferrer">OpenFreeMap</a>
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a>
@@ -293,14 +349,22 @@ export function App() {
           <button
             type="button"
             className="library-scrim"
-            aria-label="关闭诗库"
+            tabIndex={-1}
+            aria-hidden="true"
             onClick={() => setLibraryOpen(false)}
           />
-          <aside id="poem-library" className="poem-library" aria-label="诗词库">
+          <aside
+            ref={libraryPanelRef}
+            id="poem-library"
+            className="poem-library"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="poem-library-title"
+          >
             <header>
               <div>
                 <span>跨朝代诗词库</span>
-                <h2>{activeSnapshot.dynastyLabel}</h2>
+                <h2 id="poem-library-title">{activeSnapshot.dynastyLabel}</h2>
               </div>
               <button type="button" aria-label="关闭诗库" onClick={() => setLibraryOpen(false)}>×</button>
             </header>
@@ -379,7 +443,13 @@ export function App() {
       )}
 
       {!entered && (
-        <section className="entry-gate" aria-labelledby="entry-title">
+        <section
+          className="entry-gate"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="entry-title"
+          aria-describedby="entry-description"
+        >
           <div className="gate-contour contour-one" />
           <div className="gate-contour contour-two" />
           <div className="gate-contour contour-three" />
@@ -390,7 +460,7 @@ export function App() {
             <h1 id="entry-title">
               诗行落在大地上，<br />声音随山河而流转。
             </h1>
-            <p>
+            <p id="entry-description">
               从先秦歌谣到清代诗篇，收录统编小学、初中古诗词，在真实山河间循时代、作者与地点游历。
             </p>
             <button type="button" className="enter-button" onClick={startExperience}>

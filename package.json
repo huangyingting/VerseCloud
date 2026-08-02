@@ -11,6 +11,7 @@
     "test": "vitest run src",
     "test:watch": "vitest src",
     "verify:corpus": "vite-node scripts/verify-school-corpus.ts",
+    "audit:user-journey": "playwright test tests/e2e/user-journey-audit.spec.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
