@@ -22,6 +22,8 @@ export type Confidence = 'high' | 'medium' | 'low'
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
 
+export type SchoolLevel = 'primary' | 'middle'
+
 export type PoemVisualEffect =
   | 'petals-embers'
   | 'river-flight'
@@ -53,6 +55,7 @@ export interface Poem {
   accent: string
   visualEffect: PoemVisualEffect
   visualEffectLabel: string
+  curriculumLevels?: SchoolLevel[]
 }
 
 export interface MapSnapshot {

@@ -1,8 +1,9 @@
 import type { Poem } from '../types'
+import { schoolPoems, schoolPoemTextKey } from './schoolPoems'
 
 const sourceUrl = 'https://github.com/chinese-poetry/chinese-poetry'
 
-export const poems: Poem[] = [
+const curatedPoems: Poem[] = [
   {
     id: 'shijing-guan-ju', title: '关雎', author: '佚名', dynasty: 'pre-qin',
     year: -900, yearLabel: '约前9世纪', eraLabel: '西周诗歌',
@@ -414,6 +415,23 @@ export const poems: Poem[] = [
     accent: '#a4b87b', visualEffect: 'river-mist', visualEffectLabel: '苔花 · 微光',
   },
 ]
+
+const curriculumLevelsByText = new Map(
+  schoolPoems.map((poem) => [schoolPoemTextKey(poem), poem.curriculumLevels]),
+)
+const publishedTextKeys = new Set<string>()
+
+export const poems: Poem[] = [...curatedPoems, ...schoolPoems]
+  .filter((poem) => {
+    const key = schoolPoemTextKey(poem)
+    if (publishedTextKeys.has(key)) return false
+    publishedTextKeys.add(key)
+    return true
+  })
+  .map((poem) => ({
+    ...poem,
+    curriculumLevels: curriculumLevelsByText.get(schoolPoemTextKey(poem)),
+  }))
 
 export const defaultPoem = poems.find((poem) => poem.id === 'du-fu-chun-wang') ?? poems[0]
 

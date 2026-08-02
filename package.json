@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build-school-poems": "node scripts/build-school-poems.mjs",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run src",
     "test:watch": "vitest src",
+    "verify:corpus": "vite-node scripts/verify-school-corpus.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

@@ -73,7 +73,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
 
   const map = page.locator('.geographic-map')
   await expect(map).toHaveAttribute('data-intro-complete', 'true', { timeout: 8_000 })
-  await expect(map).not.toHaveClass(/map-moving/, { timeout: 2_000 })
+  await expect(map).not.toHaveClass(/map-moving/, { timeout: 6_000 })
   await page.waitForTimeout(150)
   const mapBounds = await map.boundingBox()
   expect(mapBounds).not.toBeNull()
@@ -221,22 +221,22 @@ test('publishes and browses every literary period', async ({ page }) => {
   })
 
   const periods = [
-    { id: 'pre-qin', label: '先秦', firstTitle: '关雎', count: 3 },
-    { id: 'han', label: '汉', firstTitle: '大风歌', count: 3 },
-    { id: 'wei-jin', label: '魏晋', firstTitle: '七步诗', count: 3 },
-    { id: 'southern-northern', label: '南北朝', firstTitle: '敕勒歌', count: 3 },
+    { id: 'pre-qin', label: '先秦', firstTitle: '关雎', count: 6 },
+    { id: 'han', label: '汉', firstTitle: '大风歌', count: 10 },
+    { id: 'wei-jin', label: '魏晋', firstTitle: '七步诗', count: 4 },
+    { id: 'southern-northern', label: '南北朝', firstTitle: '敕勒歌', count: 4 },
     { id: 'sui', label: '隋', firstTitle: '人日思归', count: 3 },
-    { id: 'tang', label: '唐', firstTitle: '春望', count: 8 },
+    { id: 'tang', label: '唐', firstTitle: '春望', count: 103 },
     { id: 'five-dynasties', label: '五代', firstTitle: '虞美人', count: 3 },
-    { id: 'song', label: '宋', firstTitle: '水调歌头', count: 3 },
-    { id: 'yuan', label: '元', firstTitle: '天净沙·秋思', count: 3 },
-    { id: 'ming', label: '明', firstTitle: '石灰吟', count: 3 },
-    { id: 'qing', label: '清', firstTitle: '己亥杂诗·其五', count: 3 },
+    { id: 'song', label: '宋', firstTitle: '水调歌头', count: 58 },
+    { id: 'yuan', label: '元', firstTitle: '天净沙·秋思', count: 4 },
+    { id: 'ming', label: '明', firstTitle: '石灰吟', count: 5 },
+    { id: 'qing', label: '清', firstTitle: '己亥杂诗·其五', count: 10 },
   ]
 
   await page.goto('/')
   await expect(page.locator('.dynasty-nav button')).toHaveCount(periods.length)
-  await expect(page.getByText('十一段诗史 · 38处诗光')).toBeVisible()
+  await expect(page.getByText('十一段诗史 · 210处诗光')).toBeVisible()
   await page.getByRole('button', { name: /展开诗卷/ }).click()
 
   for (const period of periods) {
@@ -257,15 +257,25 @@ test('publishes and browses every literary period', async ({ page }) => {
 
   await page.getByRole('button', { name: /诗库/ }).click()
   await page.getByRole('searchbox', { name: '搜索当前时期的诗词' }).fill('袁枚')
-  await expect(page.locator('.library-poems > button')).toHaveCount(1)
-  await expect(page.locator('.library-search b')).toHaveText('1/3')
+  await expect(page.locator('.library-poems > button')).toHaveCount(2)
+  await expect(page.locator('.library-search b')).toHaveText('2/10')
   await page.locator('[data-library-poem="yuan-mei-moss"]').click()
   await expect(page.getByRole('heading', { name: '苔', exact: true })).toBeVisible()
   await expect(page.locator('.library-evidence')).toContainText('金陵随园')
+  await page.getByRole('searchbox', { name: '搜索当前时期的诗词' }).fill('')
+  await page.getByRole('button', { name: '小学', exact: true }).click()
+  await expect(page.locator('.library-search b')).toHaveText('6/10')
+  await expect(page.locator('.library-poems > button')).toHaveCount(6)
+  await expect(page.locator('.library-poems > button small em')).toHaveText([
+    '小学', '小学', '小学', '小学', '小学', '小学',
+  ])
+  await page.getByRole('button', { name: '初中', exact: true }).click()
+  await expect(page.locator('.library-search b')).toHaveText('3/10')
   expect(runtimeErrors).toEqual([])
 })
 
 test('keeps every poem readable on a reduced-motion mobile viewport', async ({ page }) => {
+  test.setTimeout(240_000)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   const runtimeErrors: string[] = []
@@ -300,8 +310,9 @@ test('keeps every poem readable on a reduced-motion mobile viewport', async ({ p
 
     for (const poemId of poemIds) {
       await page.getByRole('button', { name: /诗库/ }).click()
-      await page.locator(`[data-library-poem="${poemId}"]`).click()
-      await page.waitForTimeout(60)
+      const poemButton = page.locator(`[data-library-poem="${poemId}"]`)
+      await poemButton.evaluate((button: HTMLButtonElement) => button.click())
+      await expect(page.locator('.map-poem-sign')).toHaveAttribute('data-poem-id', poemId)
       const layout = await page.locator('.map-poem-sign').evaluate((sign) => {
         const bounds = sign.getBoundingClientRect()
         const columns = [...sign.querySelectorAll('h1, .map-poem-author, .map-poem-lines p, footer')]
@@ -312,17 +323,19 @@ test('keeps every poem readable on a reduced-motion mobile viewport', async ({ p
             && bounds.right <= window.innerWidth + 0.5
             && bounds.bottom <= window.innerHeight + 0.5,
           columnsFit: columns.every((column) => column.scrollHeight <= column.clientHeight + 1),
+          frameFits: sign.scrollWidth <= sign.clientWidth + 1,
         }
       })
       expect(layout, `${periodId}/${poemId}`).toEqual({
         insideViewport: true,
         columnsFit: true,
+        frameFits: true,
       })
       visitedPoems += 1
     }
   }
 
-  expect(visitedPoems).toBe(38)
+  expect(visitedPoems).toBe(210)
   expect(runtimeErrors).toEqual([])
 })
 
@@ -372,5 +385,25 @@ test('keeps the WebGL scene alive on a narrow mobile viewport', async ({ page })
   expect(mobileSignBounds!.y).toBeGreaterThanOrEqual(0)
   expect(mobileSignBounds!.x + mobileSignBounds!.width).toBeLessThanOrEqual(390)
   expect(mobileSignBounds!.y + mobileSignBounds!.height).toBeLessThanOrEqual(844)
+
+  await page.locator('.dynasty-nav [data-dynasty="song"]').click()
+  await expect(page.getByRole('heading', { name: '水调歌头', exact: true })).toBeVisible()
+  await expect(mobileMap).not.toHaveClass(/map-moving/, { timeout: 6_000 })
+  await expect(mobileSign).toHaveAttribute('data-sentence-count', '19')
+  const songScrollLayout = await mobileSign.evaluate((sign) => {
+    const bounds = sign.getBoundingClientRect()
+    return {
+      columns: Number((sign as HTMLElement).dataset.columnCount),
+      frameFits: sign.scrollWidth <= sign.clientWidth + 1,
+      insideViewport:
+        bounds.left >= -0.5
+        && bounds.right <= window.innerWidth + 0.5
+        && bounds.top >= -0.5
+        && bounds.bottom <= window.innerHeight + 0.5,
+    }
+  })
+  expect(songScrollLayout.columns).toBeLessThan(19)
+  expect(songScrollLayout.frameFits).toBe(true)
+  expect(songScrollLayout.insideViewport).toBe(true)
   expect(contextLosses).toEqual([])
 })

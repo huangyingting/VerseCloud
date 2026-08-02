@@ -25,6 +25,8 @@ import { projectPoint } from './lib/geo'
 import { SceneBoundary } from './components/SceneBoundary'
 import type { DynastyId, Poem, ScenePoint, Season, SoundscapeMix } from './types'
 
+type LibraryLevel = 'all' | 'primary' | 'middle'
+
 const initialFocus = { x: 0, y: 0 }
 const seasons: Array<{ id: Season; label: string; note: string }> = [
   { id: 'spring', label: '春', note: '花色与新绿' },
@@ -45,6 +47,7 @@ export function App() {
   const [season, setSeason] = useState<Season>('spring')
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [libraryQuery, setLibraryQuery] = useState('')
+  const [libraryLevel, setLibraryLevel] = useState<LibraryLevel>('all')
   const [mix, setMix] = useState<SoundscapeMix>(() =>
     computeSoundscapeMix(initialFocus),
   )
@@ -64,12 +67,18 @@ export function App() {
     : ((selectedPoem.year - poemYearFloor) / (poemYearCeiling - poemYearFloor)) * 100
   const visibleLibraryPoems = useMemo(() => {
     const query = libraryQuery.trim().toLocaleLowerCase('zh-CN')
-    if (!query) return dynastyPoems
     return dynastyPoems.filter((poem) =>
-      [poem.title, poem.author, poem.placeName, poem.eraLabel]
-        .some((value) => value.toLocaleLowerCase('zh-CN').includes(query)),
+      (libraryLevel === 'all' || poem.curriculumLevels?.includes(libraryLevel))
+      && (!query || [
+        poem.title,
+        poem.author,
+        poem.placeName,
+        poem.eraLabel,
+        poem.curriculumLevels?.includes('primary') ? '小学' : '',
+        poem.curriculumLevels?.includes('middle') ? '初中' : '',
+      ].some((value) => value.toLocaleLowerCase('zh-CN').includes(query))),
     )
-  }, [dynastyPoems, libraryQuery])
+  }, [dynastyPoems, libraryLevel, libraryQuery])
 
   const startExperience = async () => {
     setEntered(true)
@@ -115,6 +124,7 @@ export function App() {
     const firstPoem = poems.find((poem) => poem.dynasty === dynasty)
     if (!firstPoem) return
     setLibraryQuery('')
+    setLibraryLevel('all')
     selectPoem(firstPoem)
   }
 
@@ -295,8 +305,25 @@ export function App() {
               <button type="button" aria-label="关闭诗库" onClick={() => setLibraryOpen(false)}>×</button>
             </header>
             <p className="period-note">
-              {activeSnapshot.dateRange} · {activeSnapshot.note}
+              {activeSnapshot.dateRange} · {activeSnapshot.note} · 本期{dynastyPoems.length}首
             </p>
+            <div className="curriculum-filter" role="group" aria-label="教材范围">
+              {([
+                ['all', '全部'],
+                ['primary', '小学'],
+                ['middle', '初中'],
+              ] as const).map(([level, label]) => (
+                <button
+                  key={level}
+                  type="button"
+                  className={libraryLevel === level ? 'active' : ''}
+                  aria-pressed={libraryLevel === level}
+                  onClick={() => setLibraryLevel(level)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <label className="library-search">
               <span className="sr-only">搜索当前时期的诗词</span>
               <input
@@ -321,7 +348,16 @@ export function App() {
                 >
                   <span>{String(index + 1).padStart(2, '0')}</span>
                   <strong>{poem.title}</strong>
-                  <small>{poem.author} · {poem.placeName}</small>
+                  <small>
+                    {poem.curriculumLevels && (
+                      <em>
+                        {poem.curriculumLevels
+                          .map((level) => level === 'primary' ? '小学' : '初中')
+                          .join('·')}
+                      </em>
+                    )}
+                    <span>{poem.author} · {poem.placeName}</span>
+                  </small>
                 </button>
               ))}
               {visibleLibraryPoems.length === 0 && (
@@ -355,7 +391,7 @@ export function App() {
               诗行落在大地上，<br />声音随山河而流转。
             </h1>
             <p>
-              从先秦歌谣到清代诗篇，在真实山河间循时代、作者与地点游历。地图移动时，三层程序化音景会随空间自然交融。
+              从先秦歌谣到清代诗篇，收录统编小学、初中古诗词，在真实山河间循时代、作者与地点游历。
             </p>
             <button type="button" className="enter-button" onClick={startExperience}>
               <span>展开诗卷</span>

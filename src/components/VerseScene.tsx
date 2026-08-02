@@ -674,8 +674,49 @@ function splitVerseSentences(lines: string[]) {
   )
 }
 
+function balanceVerseColumns(sentences: string[], maximumColumns: number) {
+  if (sentences.length <= maximumColumns) return sentences
+
+  const columnCount = Math.max(1, maximumColumns)
+  const remainingCharacters = sentences
+    .map((sentence) => [...sentence].length)
+    .reduce((sum, length) => sum + length, 0)
+  const columns: string[] = []
+  let sentenceIndex = 0
+  let consumedCharacters = 0
+
+  for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+    const columnsLeft = columnCount - columnIndex
+    const targetLength = (remainingCharacters - consumedCharacters) / columnsLeft
+    let column = ''
+    let columnLength = 0
+
+    while (sentenceIndex < sentences.length) {
+      const sentence = sentences[sentenceIndex]
+      const sentenceLength = [...sentence].length
+      const sentencesLeftAfter = sentences.length - sentenceIndex - 1
+      const mustLeaveOnePerColumn = sentencesLeftAfter < columnsLeft - 1
+      if (column && (mustLeaveOnePerColumn || columnLength + sentenceLength > targetLength)) break
+      column += sentence
+      columnLength += sentenceLength
+      sentenceIndex += 1
+      if (sentences.length - sentenceIndex === columnsLeft - 1) break
+    }
+
+    columns.push(column)
+    consumedCharacters += columnLength
+  }
+
+  return columns.filter(Boolean)
+}
+
 function compactVerticalLabel(value: string) {
-  return value.replace(/\s*·\s*/gu, '·').trim()
+  const compacted = value
+    .replace(/\s*·\s*/gu, '·')
+    .replace(/(?:诗歌|诗词|诗曲)?文化区域/gu, '')
+    .replace(/(?:主要)?(?:行旅|活动)区域/gu, '')
+    .trim()
+  return [...compacted].slice(0, 7).join('')
 }
 
 function fitVerticalText(
@@ -688,36 +729,58 @@ function fitVerticalText(
   // Keep a small physical safety margin for CJK glyph ascenders, punctuation
   // and browser sub-pixel rounding in vertical writing mode.
   const fittedSize = (columnHeight
-    / (characters + Math.max(0, characters - 1) * letterSpacingEm)) * 0.92
+    / (characters + Math.max(0, characters - 1) * letterSpacingEm)) * 0.86
   return Math.min(maximumSize, fittedSize)
 }
 
 function sizeVerticalVerseMarker(element: HTMLElement, poem: Poem) {
   const compact = window.matchMedia('(max-width: 680px)').matches
   const sentences = splitVerseSentences(poem.lines)
+  const maximumFontSize = compact ? 13 : 16
+  const lineHeight = compact ? 1.32 : 1.45
+  const columnGap = compact ? 4 : 6
+  const signWidth = Math.min(
+    compact ? window.innerWidth - 26 : 520,
+    window.innerWidth - (compact ? 26 : 48),
+  )
+  // Padding, title, author, place label, dividers and the gaps between those
+  // fixed columns. Keeping this separate from verse gaps makes the frame's
+  // width deterministic instead of relying on flexbox to squeeze long ci.
+  const fixedColumnsWidth = compact ? 88 : 122
+  const preferredColumnWidth = maximumFontSize * lineHeight
+  const maximumColumns = Math.max(
+    1,
+    Math.floor(
+      (signWidth - fixedColumnsWidth + columnGap)
+      / (preferredColumnWidth + columnGap),
+    ),
+  )
+  const columns = balanceVerseColumns(sentences, maximumColumns)
   const longestSentence = Math.max(
     1,
-    ...sentences.map((sentence) => [...sentence].length),
+    ...columns.map((column) => [...column].length),
   )
   const letterSpacingEm = compact ? 0.02 : 0.045
   const heightBudget = compact
-    ? Math.min(190, Math.max(126, window.innerHeight * 0.255))
-    : Math.min(248, Math.max(170, window.innerHeight * 0.31))
+    ? Math.min(320, Math.max(184, window.innerHeight * 0.38))
+    : Math.min(380, Math.max(220, window.innerHeight * 0.42))
   const heightFit = heightBudget
     / (longestSentence + Math.max(0, longestSentence - 1) * letterSpacingEm)
-  const signWidth = Math.min(compact ? window.innerWidth - 26 : 520, window.innerWidth - 26)
-  const fixedColumnsWidth = compact ? 72 : 108
-  const widthFit = (signWidth - fixedColumnsWidth)
-    / Math.max(1, sentences.length)
-    / (compact ? 1.32 : 1.45)
+  const verseGapsWidth = Math.max(0, columns.length - 1) * columnGap
+  const widthFit = (signWidth - fixedColumnsWidth - verseGapsWidth)
+    / Math.max(1, columns.length)
+    / lineHeight
   const minimumFontSize = compact ? 9.5 : 11
-  const maximumFontSize = compact ? 13 : 16
   const fontSize = Math.min(
     maximumFontSize,
     Math.max(minimumFontSize, Math.min(heightFit, widthFit)),
   )
+  // Chromium's vertical CJK glyph advance can exceed the nominal font size,
+  // especially around rotated punctuation. Reserve measured headroom so a
+  // final long column never clips even when the arithmetic character count fits.
   const columnHeight = fontSize
     * (longestSentence + Math.max(0, longestSentence - 1) * letterSpacingEm)
+    * 1.1
   const titleSize = fitVerticalText(
     poem.title,
     columnHeight,
@@ -728,6 +791,10 @@ function sizeVerticalVerseMarker(element: HTMLElement, poem: Poem) {
   const metaLabel = `${compactVerticalLabel(poem.placeName)}·${compactVerticalLabel(poem.visualEffectLabel)}`
   const authorSize = fitVerticalText(authorLabel, columnHeight, compact ? 9 : 12, 0.05)
   const metaSize = fitVerticalText(metaLabel, columnHeight, compact ? 8 : 10, 0.04)
+  const frameWidth = Math.min(
+    signWidth,
+    fixedColumnsWidth + verseGapsWidth + columns.length * fontSize * lineHeight,
+  )
 
   element.style.setProperty('--map-poem-font-size', `${fontSize.toFixed(2)}px`)
   element.style.setProperty('--map-poem-title-size', `${titleSize.toFixed(2)}px`)
@@ -736,7 +803,19 @@ function sizeVerticalVerseMarker(element: HTMLElement, poem: Poem) {
   // Leave a few physical pixels for font ascenders, punctuation and browser
   // sub-pixel rounding while keeping every item inside the same visual column.
   element.style.setProperty('--map-poem-column-height', `${(columnHeight + 3).toFixed(2)}px`)
+  element.style.setProperty('--map-poem-frame-width', `${Math.ceil(frameWidth)}px`)
   element.dataset.sentenceCount = String(sentences.length)
+  element.dataset.columnCount = String(columns.length)
+  const lines = element.querySelector<HTMLElement>('.map-poem-lines')
+  const layoutKey = columns.join('\n')
+  if (lines && lines.dataset.layoutKey !== layoutKey) {
+    lines.replaceChildren(...columns.map((column) => {
+      const verseLine = document.createElement('p')
+      verseLine.textContent = column
+      return verseLine
+    }))
+    lines.dataset.layoutKey = layoutKey
+  }
   delete element.dataset.baseWidth
   delete element.dataset.baseHeight
 }
@@ -773,6 +852,7 @@ function createVerticalVerseMarker(poem: Poem) {
   element.className = 'map-poem-sign'
   element.setAttribute('role', 'article')
   element.setAttribute('aria-label', `${poem.author}《${poem.title}》`)
+  element.dataset.poemId = poem.id
 
   const heading = document.createElement('h1')
   heading.textContent = poem.title
@@ -782,11 +862,6 @@ function createVerticalVerseMarker(poem: Poem) {
   const lines = document.createElement('div')
   lines.className = 'map-poem-lines'
   lines.setAttribute('aria-label', poem.lines.join(''))
-  splitVerseSentences(poem.lines).forEach((sentence) => {
-    const verseLine = document.createElement('p')
-    verseLine.textContent = sentence
-    lines.append(verseLine)
-  })
   const place = document.createElement('footer')
   place.textContent = `${compactVerticalLabel(poem.placeName)}·${compactVerticalLabel(poem.visualEffectLabel)}`
   element.append(heading, author, lines, place)

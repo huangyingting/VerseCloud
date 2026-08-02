@@ -1,0 +1,159 @@
+import { writeFile } from 'node:fs/promises'
+
+const baseUrl = 'https://www.gushiwen.cn'
+const curriculumPages = [
+  { level: 'primary', path: '/gushi/xiaoxue.aspx' },
+  { level: 'middle', path: '/gushi/chuzhong.aspx' },
+]
+
+const proseTitles = new Set([
+  '司马光', '守株待兔', '精卫填海', '王戎不取道旁李', '囊萤夜读', '铁杵成针',
+  '少年中国说(节选)', '古人谈读书', '自相矛盾', '杨氏之子', '伯牙鼓琴',
+  '书戴嵩画牛', '学弈', '两小儿辩日', '对韵歌', '古对今', '人之初',
+  '咏雪', '陈太丘与友期行', '《论语》十二章', '诫子书', '狼',
+  '小圣施威降大圣', '穿井得一人', '杞人忧天', '孙权劝学', '卖油翁',
+  '陋室铭', '爱莲说', '活板', '三峡', '答谢中书书', '记承天寺夜游',
+  '与朱元思书', '得道多助，失道寡助', '富贵不能淫', '生于忧患，死于安乐',
+  '愚公移山', '周亚夫军细柳', '桃花源记', '小石潭记', '核舟记',
+  '北冥有鱼', '庄子与惠子游于濠梁之上', '虽有嘉肴', '大道之行也', '马说',
+  '岳阳楼记', '醉翁亭记', '湖心亭看雪', '智取生辰纲', '范进中举',
+  '三顾茅庐', '刘姥姥进大观园', '鱼我所欲也', '唐雎不辱使命',
+  '送东阳马生序', '曹刿论战', '邹忌讽齐王纳谏', '陈涉世家', '出师表',
+])
+
+const dynastyIds = new Map([
+  ['先秦', 'pre-qin'],
+  ['两汉', 'han'],
+  ['汉代', 'han'],
+  ['魏晋', 'wei-jin'],
+  ['南北朝', 'southern-northern'],
+  ['隋代', 'sui'],
+  ['唐代', 'tang'],
+  ['五代', 'five-dynasties'],
+  ['宋代', 'song'],
+  ['元代', 'yuan'],
+  ['明代', 'ming'],
+  ['清代', 'qing'],
+])
+
+function decodeHtml(value) {
+  return value
+    .replace(/&#(\d+);/gu, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([\da-f]+);/giu, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
+    .replace(/&nbsp;/giu, ' ')
+    .replace(/&amp;/giu, '&')
+    .replace(/&quot;/giu, '"')
+    .replace(/&apos;|&#39;/giu, "'")
+    .replace(/&lt;/giu, '<')
+    .replace(/&gt;/giu, '>')
+}
+
+function plainText(value) {
+  return decodeHtml(value.replace(/<[^>]+>/gu, '')).replace(/\s+/gu, ' ').trim()
+}
+
+function curriculumEntries(html, level) {
+  return [...html.matchAll(
+    /<span><a href="(\/shiwenv_([^".]+)\.aspx)" target="_blank">\s*([^<]+)<\/a>[^<]*<\/span>/gu,
+  )].map((match) => ({
+    level,
+    href: match[1],
+    sourceId: match[2],
+    title: plainText(match[3]),
+  }))
+}
+
+function cleanVerseHtml(value) {
+  const withLineBreaks = value
+    .replace(/<br\s*\/?>/giu, '\n')
+    .replace(/<\/p>/giu, '\n')
+    .replace(/<[^>]+>/gu, '')
+  return decodeHtml(withLineBreaks)
+    .split(/\n+/gu)
+    .map((line) => line
+      .replace(/\s+/gu, '')
+      .replace(/[（(][^（）()]*?(?:一作|又作|通作|版本)[^（）()]*?[）)]/gu, '')
+      .trim())
+    .filter(Boolean)
+}
+
+async function fetchDetail(entry) {
+  const response = await fetch(`${baseUrl}${entry.href}`, {
+    headers: { 'user-agent': 'VerseCloud curriculum importer' },
+  })
+  if (!response.ok) throw new Error(`${entry.href}: HTTP ${response.status}`)
+  const html = await response.text()
+  const title = plainText(
+    html.match(new RegExp(`<div id="zhengwen${entry.sourceId}">[\\s\\S]*?<h1[^>]*>([^<]+)</h1>`, 'u'))?.[1]
+      ?? entry.title,
+  )
+  const source = html.match(
+    new RegExp(`<div id="zhengwen${entry.sourceId}">[\\s\\S]*?<p class="source">([\\s\\S]*?)</p>`, 'u'),
+  )?.[1] ?? ''
+  const dynastyLabel = plainText(source).match(/〔([^〕]+)〕/u)?.[1]
+  const dynasty = dynastyIds.get(dynastyLabel)
+  const content = html.match(
+    new RegExp(`<div class="contson" id="contson${entry.sourceId}">([\\s\\S]*?)</div>`, 'u'),
+  )?.[1]
+  const authorFromImage = source.match(/<img[^>]+alt="([^"]+)"/u)?.[1]
+  const author = decodeHtml(
+    authorFromImage ?? (plainText(source).replace(/〔[^〕]+〕/gu, '') || '佚名'),
+  )
+  const lines = content ? cleanVerseHtml(content) : []
+
+  if (!dynasty || lines.length === 0) return null
+  return { ...entry, title, author, dynasty, lines }
+}
+
+const sourceEntries = (
+  await Promise.all(curriculumPages.map(async ({ level, path }) => {
+    const response = await fetch(`${baseUrl}${path}`, {
+      headers: { 'user-agent': 'VerseCloud curriculum importer' },
+    })
+    if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`)
+    return curriculumEntries(await response.text(), level)
+  }))
+).flat().filter((entry) => !proseTitles.has(entry.title))
+
+const groupedEntries = new Map()
+for (const entry of sourceEntries) {
+  const current = groupedEntries.get(entry.href)
+  if (current) current.levels.add(entry.level)
+  else groupedEntries.set(entry.href, { ...entry, levels: new Set([entry.level]) })
+}
+
+const pending = [...groupedEntries.values()]
+const poems = []
+const workerCount = 8
+await Promise.all(Array.from({ length: workerCount }, async () => {
+  while (pending.length > 0) {
+    const entry = pending.shift()
+    if (!entry) return
+    const detail = await fetchDetail(entry)
+    if (!detail) continue
+    poems.push({
+      sourceId: detail.sourceId,
+      title: detail.title,
+      author: detail.author,
+      dynasty: detail.dynasty,
+      lines: detail.lines,
+      curriculumLevels: [...entry.levels].sort(),
+    })
+  }
+}))
+
+poems.sort((left, right) =>
+  left.dynasty.localeCompare(right.dynasty)
+  || left.author.localeCompare(right.author, 'zh-CN')
+  || left.title.localeCompare(right.title, 'zh-CN'))
+
+const output = `// Generated by scripts/build-school-poems.mjs from the unified textbook\n`
+  + `// primary and middle-school verse lists. Classical prose and post-Qing works are excluded.\n`
+  + `import type { DynastyId, SchoolLevel } from '../types'\n\n`
+  + `export interface SchoolPoemSeed {\n`
+  + `  sourceId: string\n  title: string\n  author: string\n  dynasty: DynastyId\n`
+  + `  lines: string[]\n  curriculumLevels: SchoolLevel[]\n}\n\n`
+  + `export const schoolPoemSeeds: SchoolPoemSeed[] = ${JSON.stringify(poems, null, 2)}\n`
+
+await writeFile('src/data/schoolPoems.generated.ts', output)
+console.log(`Wrote ${poems.length} curriculum poems to src/data/schoolPoems.generated.ts`)

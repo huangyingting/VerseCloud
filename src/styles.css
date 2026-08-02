@@ -165,9 +165,11 @@ a:focus-visible {
   flex-direction: row-reverse;
   align-items: flex-start;
   gap: 6px;
+  width: var(--map-poem-frame-width, fit-content);
   max-width: min(520px, calc(100vw - 48px));
   max-height: calc(var(--map-poem-column-height, 238px) + 32px);
   padding: 16px 14px 14px;
+  overflow: hidden;
   border: 1px solid rgb(232 213 171 / 28%);
   color: #f2e7cf;
   background:
@@ -228,6 +230,7 @@ a:focus-visible {
 }
 
 .map-poem-lines p {
+  flex: none;
   color: #eee2c9;
   max-height: var(--map-poem-column-height, 238px);
   overflow-wrap: normal;
@@ -1222,6 +1225,32 @@ a:focus-visible {
   letter-spacing: 0.05em;
 }
 
+.curriculum-filter {
+  display: flex;
+  gap: 6px;
+  margin: -4px 0 12px;
+}
+
+.curriculum-filter button {
+  min-width: 50px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgb(223 205 167 / 14%);
+  color: #868174;
+  background: rgb(4 10 7 / 24%);
+  cursor: pointer;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+.curriculum-filter button:hover,
+.curriculum-filter button.active {
+  border-color: rgb(195 165 106 / 48%);
+  color: #eadbbd;
+  background: rgb(195 165 106 / 10%);
+}
+
 .library-search {
   position: relative;
   display: flex;
@@ -1314,11 +1343,28 @@ a:focus-visible {
 }
 
 .library-poems > button small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   overflow: hidden;
   color: #7f7c71;
   font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.library-poems > button small em {
+  flex: none;
+  padding: 2px 4px;
+  border: 1px solid rgb(195 165 106 / 25%);
+  color: #bba579;
+  font-style: normal;
+  line-height: 1;
+}
+
+.library-poems > button small span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .library-empty {

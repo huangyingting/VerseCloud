@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { snapshots } from './mapSnapshots'
 import { defaultPoem, poems } from './poems'
+import { schoolPoems, schoolPoemTextKey } from './schoolPoems'
+import { schoolPoemSeeds } from './schoolPoems.generated'
 
 describe('curated poem corpus', () => {
   it('publishes every literary period with multiple browsable works', () => {
@@ -14,8 +16,26 @@ describe('curated poem corpus', () => {
       ]),
     )
 
-    expect(poems.length).toBeGreaterThanOrEqual(38)
+    expect(poems.length).toBeGreaterThanOrEqual(210)
     counts.forEach((count) => expect(count).toBeGreaterThanOrEqual(3))
+  })
+
+  it('publishes the unified primary and middle-school classical verse corpus', () => {
+    expect(schoolPoemSeeds).toHaveLength(194)
+    expect(schoolPoemSeeds.filter((poem) =>
+      poem.curriculumLevels.includes('primary'))).toHaveLength(110)
+    expect(schoolPoemSeeds.filter((poem) =>
+      poem.curriculumLevels.includes('middle'))).toHaveLength(84)
+
+    const publishedByText = new Map(
+      poems.map((poem) => [schoolPoemTextKey(poem), poem]),
+    )
+    schoolPoems.forEach((schoolPoem) => {
+      const published = publishedByText.get(schoolPoemTextKey(schoolPoem))
+      expect(published, schoolPoem.title).toBeDefined()
+      expect(published?.curriculumLevels).toEqual(schoolPoem.curriculumLevels)
+    })
+    expect(poems.filter((poem) => poem.curriculumLevels)).toHaveLength(194)
   })
 
   it('keeps ids, text, map coordinates, evidence, and sources production-safe', () => {

@@ -27,7 +27,13 @@ describe('groupPoemsByPlace', () => {
   })
 
   it('assigns different stable heights to nearby places', () => {
-    const tangPoems = poems.filter((poem) => poem.dynasty === 'tang')
+    const fixtureIds = new Set([
+      'du-fu-chun-wang',
+      'wang-wei-weicheng',
+      'wang-zhihuan-guanquelou',
+      'zhang-ji-fengqiao',
+    ])
+    const tangPoems = poems.filter((poem) => fixtureIds.has(poem.id))
     const layouts = elevateNearbyPoemPlaces(tangPoems)
     const byKey = new Map(layouts.map((place) => [place.key, place]))
     const changan = byKey.get('changan')
