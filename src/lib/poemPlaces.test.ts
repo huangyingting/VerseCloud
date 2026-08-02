@@ -38,8 +38,8 @@ describe('groupPoemsByPlace', () => {
     const byKey = new Map(layouts.map((place) => [place.key, place]))
     const changan = byKey.get('changan')
     const weicheng = byKey.get('weicheng')
-    const guanquelou = byKey.get('pu-guanquelou')
-    const distant = byKey.get('gusu-fengqiao')
+    const guanquelou = byKey.get('puzhou-guanquelou')
+    const distant = byKey.get('suzhou-fengqiao')
 
     expect(changan?.hasNearbyPlace).toBe(true)
     expect(weicheng?.hasNearbyPlace).toBe(true)

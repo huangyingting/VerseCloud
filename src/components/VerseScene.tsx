@@ -713,8 +713,6 @@ function balanceVerseColumns(sentences: string[], maximumColumns: number) {
 function compactVerticalLabel(value: string) {
   const compacted = value
     .replace(/\s*·\s*/gu, '·')
-    .replace(/(?:诗歌|诗词|诗曲)?文化区域/gu, '')
-    .replace(/(?:主要)?(?:行旅|活动)区域/gu, '')
     .trim()
   return [...compacted].slice(0, 7).join('')
 }
@@ -935,7 +933,9 @@ function focusSelectedPoem(map: MapLibreMap, poem: Poem) {
     center: [poem.longitude, poem.latitude],
     zoom: compact ? 4.55 : 4.7,
     pitch: compact ? 42 : 48,
-    bearing: -8,
+    // A pitched, rotated camera turns the vertical focus offset into a
+    // horizontal drift. Long poem slips then cross the narrow viewport edge.
+    bearing: compact ? 0 : -8,
     offset: compact ? [0, 128] : [0, 112],
     duration: reducedMotion ? 0 : 1_450,
     easing: (time) => 1 - Math.pow(1 - time, 3),

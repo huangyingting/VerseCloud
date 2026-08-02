@@ -41,7 +41,7 @@ export const snapshots: MapSnapshot[] = [
     endYear: -221,
     dateRange: '约前11世纪—前221',
     status: 'published',
-    note: '以《诗经》、楚辞及先秦歌谣为线索；地点为文本场景或文化区域锚点。',
+    note: '以《诗经》、楚辞及先秦歌谣为线索；每篇地点均区分作品场景与具体传承关联地。',
   },
   {
     id: 'han-literary-period',

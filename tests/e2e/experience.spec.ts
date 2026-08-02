@@ -46,7 +46,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
     hasNearbyPlace: boolean
   }>
   const crowdedCapitalMarkers = placeGroups.filter((group) =>
-    ['changan', 'weicheng', 'pu-guanquelou'].includes(group.key),
+    ['changan', 'weicheng', 'puzhou-guanquelou'].includes(group.key),
   )
   expect(crowdedCapitalMarkers).toHaveLength(3)
   expect(crowdedCapitalMarkers.every((group) => group.hasNearbyPlace)).toBe(true)
