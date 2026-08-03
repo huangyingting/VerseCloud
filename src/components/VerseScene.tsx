@@ -8,8 +8,12 @@ import {
 import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
+import {
+  historicalDivisionCollection,
+  historicalMapContexts,
+  type HistoricalMapContext,
+} from '../data/historicalGeography'
 import { dynastyLabels } from '../data/mapSnapshots'
-import { tangMapLabels, tangRegionDivisions } from '../data/tangGeography'
 import { projectPoint } from '../lib/geo'
 import { elevateNearbyPoemPlaces } from '../lib/poemPlaces'
 import { emptyPoemRoute, poemRoute } from '../lib/poemRoute'
@@ -66,6 +70,7 @@ const geographicStyle: StyleSpecification = {
       source: 'shadedRelief',
       paint: {
         'raster-opacity': 0.86,
+        'raster-fade-duration': 180,
         'raster-saturation': -0.48,
         'raster-contrast': 0.28,
         'raster-brightness-min': 0.04,
@@ -119,14 +124,16 @@ const geographicStyle: StyleSpecification = {
   },
 }
 
-function historicalLabelCollection(): GeoJSON.FeatureCollection<GeoJSON.Point> {
+function historicalLabelCollection(
+  context: HistoricalMapContext,
+): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: 'FeatureCollection',
-    features: tangMapLabels.map((label, index) => ({
+    features: context.labels.map((label, index) => ({
       type: 'Feature',
       id: index,
       properties: {
-        imageId: `tang-label-${index}`,
+        imageId: `historical-label-${context.dynasty}-${index}`,
         kind: label.kind,
         major: Boolean(label.major),
       },
@@ -388,25 +395,23 @@ function addHistoricalLayers(
   map: MapLibreMap,
   poems: Poem[],
   selectedPoemId: string,
-  showTangContext: boolean,
+  context: HistoricalMapContext,
 ) {
-  if (showTangContext) {
-    map.addSource('tang-regions', {
-      type: 'geojson',
-      data: tangRegionDivisions,
-    })
-    map.addLayer({
-      id: 'tang-region-line',
-      type: 'line',
-      source: 'tang-regions',
-      paint: {
-        'line-color': '#c5af7d',
-        'line-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.28, 6, 0.5],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.55, 6, 1.15],
-        'line-dasharray': [1.2, 2.4],
-      },
-    })
-  }
+  map.addSource('historical-regions', {
+    type: 'geojson',
+    data: historicalDivisionCollection(context),
+  })
+  map.addLayer({
+    id: 'historical-region-line',
+    type: 'line',
+    source: 'historical-regions',
+    paint: {
+      'line-color': '#c5af7d',
+      'line-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.28, 6, 0.5],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.55, 6, 1.15],
+      'line-dasharray': [1.2, 2.4],
+    },
+  })
 
   map.addSource('poem-route', {
     type: 'geojson',
@@ -479,7 +484,7 @@ async function addWebglLabelLayers(
   map: MapLibreMap,
   container: HTMLElement,
   poems: Poem[],
-  showTangContext: boolean,
+  context: HistoricalMapContext,
 ) {
   await document.fonts.ready
   try {
@@ -488,14 +493,12 @@ async function addWebglLabelLayers(
     return
   }
 
-  if (showTangContext) {
-    tangMapLabels.forEach((label, index) => {
-      const id = `tang-label-${index}`
-      if (map.hasImage(id)) return
-      const rendered = createLabelImage(label.name, label.kind)
-      if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
-    })
-  }
+  context.labels.forEach((label, index) => {
+    const id = `historical-label-${context.dynasty}-${index}`
+    if (map.hasImage(id)) return
+    const rendered = createLabelImage(label.name, label.kind)
+    if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
+  })
   const poemGroups = elevateNearbyPoemPlaces(poems)
   poemGroups.forEach((group, index) => {
     const id = `poem-label-${index}`
@@ -519,46 +522,44 @@ async function addWebglLabelLayers(
       if (rendered) map.addImage(id, rendered.image, { pixelRatio: rendered.pixelRatio })
     })
   })
-  if (showTangContext) {
-    map.addSource('tang-labels', {
-      type: 'geojson',
-      data: historicalLabelCollection(),
-    })
-    map.addLayer({
-      id: 'tang-region-labels',
-      type: 'symbol',
-      source: 'tang-labels',
-      maxzoom: 4.45,
-      filter: ['==', ['get', 'kind'], 'region'],
-      layout: {
-        'icon-image': ['get', 'imageId'],
-        'icon-allow-overlap': false,
-        'icon-padding': 5,
-        'icon-pitch-alignment': 'viewport',
-        'icon-rotation-alignment': 'viewport',
-      },
-      paint: {
-        'icon-opacity': ['case', ['get', 'major'], 0.9, 0.66],
-      },
-    })
-    map.addLayer({
-      id: 'tang-prefecture-labels',
-      type: 'symbol',
-      source: 'tang-labels',
-      minzoom: 4.25,
-      filter: ['==', ['get', 'kind'], 'prefecture'],
-      layout: {
-        'icon-image': ['get', 'imageId'],
-        'icon-allow-overlap': false,
-        'icon-padding': 4,
-        'icon-pitch-alignment': 'viewport',
-        'icon-rotation-alignment': 'viewport',
-      },
-      paint: {
-        'icon-opacity': ['case', ['get', 'major'], 0.92, 0.72],
-      },
-    })
-  }
+  map.addSource('historical-labels', {
+    type: 'geojson',
+    data: historicalLabelCollection(context),
+  })
+  map.addLayer({
+    id: 'historical-region-labels',
+    type: 'symbol',
+    source: 'historical-labels',
+    maxzoom: 4.75,
+    filter: ['==', ['get', 'kind'], 'region'],
+    layout: {
+      'icon-image': ['get', 'imageId'],
+      'icon-allow-overlap': false,
+      'icon-padding': 5,
+      'icon-pitch-alignment': 'viewport',
+      'icon-rotation-alignment': 'viewport',
+    },
+    paint: {
+      'icon-opacity': ['case', ['get', 'major'], 0.9, 0.66],
+    },
+  })
+  map.addLayer({
+    id: 'historical-prefecture-labels',
+    type: 'symbol',
+    source: 'historical-labels',
+    minzoom: 4.25,
+    filter: ['==', ['get', 'kind'], 'prefecture'],
+    layout: {
+      'icon-image': ['get', 'imageId'],
+      'icon-allow-overlap': false,
+      'icon-padding': 4,
+      'icon-pitch-alignment': 'viewport',
+      'icon-rotation-alignment': 'viewport',
+    },
+    paint: {
+      'icon-opacity': ['case', ['get', 'major'], 0.92, 0.72],
+    },
+  })
   map.addLayer({
     id: 'poem-location-markers',
     type: 'symbol',
@@ -860,6 +861,22 @@ function createVerticalVerseMarker(poem: Poem) {
   return new Marker({ element, anchor: 'bottom', offset: [0, -28] })
 }
 
+function updateVerticalVerseMarker(element: HTMLElement, poem: Poem) {
+  element.setAttribute('aria-label', `${poem.author}《${poem.title}》`)
+  element.dataset.poemId = poem.id
+  const heading = element.querySelector('h1')
+  const author = element.querySelector('.map-poem-author')
+  const lines = element.querySelector('.map-poem-lines')
+  const place = element.querySelector('footer')
+  if (heading) heading.textContent = poem.title
+  if (author) author.textContent = `${dynastyLabels[poem.dynasty]}·${poem.author}`
+  if (lines) lines.setAttribute('aria-label', poem.lines.join(''))
+  if (place) {
+    place.textContent = `${compactVerticalLabel(poem.placeName)}·${compactVerticalLabel(poem.visualEffectLabel)}`
+  }
+  sizeVerticalVerseMarker(element, poem)
+}
+
 function createPoemEffectMarker(poem: Poem) {
   const element = document.createElement('div')
   element.className = `poem-effect effect-${poem.visualEffect}`
@@ -876,6 +893,11 @@ function createPoemEffectMarker(poem: Poem) {
   }
 
   return new Marker({ element, anchor: 'center' })
+}
+
+function updatePoemEffectMarker(element: HTMLElement, poem: Poem) {
+  element.className = `poem-effect effect-${poem.visualEffect}`
+  element.style.setProperty('--effect-accent', poem.accent)
 }
 
 function createPoemGroupPicker(
@@ -988,12 +1010,15 @@ export function VerseScene({
       minZoom: compact ? 3.3 : 4,
       maxZoom: 8,
       renderWorldCopies: false,
-      maxTileCacheSize: compact ? 24 : 48,
-      cancelPendingTileRequestsWhileZooming: true,
+      // Retain the previous camera's tiles while the next view resolves.
+      // Cancelling requests and using a very small cache produced visible
+      // blank-tile flashes during poem journeys and manual panning.
+      maxTileCacheSize: compact ? 48 : 96,
+      cancelPendingTileRequestsWhileZooming: false,
       refreshExpiredTiles: false,
       pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
       attributionControl: false,
-      fadeDuration: 0,
+      fadeDuration: 180,
       // MapLibre's native scroll zoom preserves the geographic point under
       // the pointer. Do not override camera updates toward the selected poem.
       scrollZoom: true,
@@ -1065,15 +1090,28 @@ export function VerseScene({
     canvas.addEventListener('wheel', handleWheelZoom, { passive: true, capture: true })
 
     map.once('style.load', () => {
-      const showTangContext = selectedPoemRef.current.dynasty === 'tang'
-      addHistoricalLayers(map, poems, selectedPoemRef.current.id, showTangContext)
+      const historicalContext = historicalMapContexts[selectedPoemRef.current.dynasty]
+      addHistoricalLayers(map, poems, selectedPoemRef.current.id, historicalContext)
       containerRef.current?.setAttribute('data-map-scope', 'classical-china')
       containerRef.current?.setAttribute('data-dynasty', selectedPoemRef.current.dynasty)
       containerRef.current?.setAttribute(
         'data-history-layer',
-        showTangContext ? 'tang-context' : 'poem-context',
+        `${selectedPoemRef.current.dynasty}-administrative-context`,
       )
       containerRef.current?.setAttribute('data-boundary-rendered', 'false')
+      containerRef.current?.setAttribute('data-administrative-division-rendered', 'true')
+      containerRef.current?.setAttribute(
+        'data-administrative-system',
+        historicalContext.systemLabel,
+      )
+      containerRef.current?.setAttribute(
+        'data-administrative-reference',
+        historicalContext.referenceLabel,
+      )
+      containerRef.current?.setAttribute(
+        'data-administrative-region-count',
+        String(historicalContext.labels.filter((label) => label.kind === 'region').length),
+      )
       containerRef.current?.setAttribute('data-poem-point-style', 'abstract-slip')
       containerRef.current?.setAttribute('data-poem-route-renderer', 'webgl-gradient')
       containerRef.current?.setAttribute('data-poem-route-state', 'idle')
@@ -1089,7 +1127,7 @@ export function VerseScene({
       )
       containerRef.current?.setAttribute('data-poem-hit-ready', 'true')
       if (containerRef.current) {
-        void addWebglLabelLayers(map, containerRef.current, poems, showTangContext)
+        void addWebglLabelLayers(map, containerRef.current, poems, historicalContext)
       }
       updateMarkerDensity()
       containerRef.current?.setAttribute('data-map-ready', 'true')
@@ -1253,16 +1291,24 @@ export function VerseScene({
     if (!map) return
     const previousPoem = journeyOriginRef.current
     journeyOriginRef.current = selectedPoem
-    selectedMarkerRef.current?.remove()
-    effectMarkerRef.current?.remove()
     groupPickerRef.current?.remove()
     groupPickerRef.current = null
-    effectMarkerRef.current = createPoemEffectMarker(selectedPoem)
-      .setLngLat([selectedPoem.longitude, selectedPoem.latitude])
-      .addTo(map)
-    selectedMarkerRef.current = createVerticalVerseMarker(selectedPoem)
-      .setLngLat([selectedPoem.longitude, selectedPoem.latitude])
-      .addTo(map)
+    if (effectMarkerRef.current) {
+      updatePoemEffectMarker(effectMarkerRef.current.getElement(), selectedPoem)
+      effectMarkerRef.current.setLngLat([selectedPoem.longitude, selectedPoem.latitude])
+    } else {
+      effectMarkerRef.current = createPoemEffectMarker(selectedPoem)
+        .setLngLat([selectedPoem.longitude, selectedPoem.latitude])
+        .addTo(map)
+    }
+    if (selectedMarkerRef.current) {
+      updateVerticalVerseMarker(selectedMarkerRef.current.getElement(), selectedPoem)
+      selectedMarkerRef.current.setLngLat([selectedPoem.longitude, selectedPoem.latitude])
+    } else {
+      selectedMarkerRef.current = createVerticalVerseMarker(selectedPoem)
+        .setLngLat([selectedPoem.longitude, selectedPoem.latitude])
+        .addTo(map)
+    }
     scaleVerticalVerseMarker(selectedMarkerRef.current.getElement(), map)
 
     const source = map.getSource('poems') as GeoJSONSource | undefined
@@ -1348,7 +1394,7 @@ export function VerseScene({
     <div
       ref={containerRef}
       className="geographic-map"
-      aria-label={`${dynastyLabels[selectedPoem.dynasty]}诗词 WebGL 地形地图`}
+      aria-label={`${dynastyLabels[selectedPoem.dynasty]}诗词与${historicalMapContexts[selectedPoem.dynasty].systemLabel}概念行政区划 WebGL 地形地图`}
     />
   )
 }

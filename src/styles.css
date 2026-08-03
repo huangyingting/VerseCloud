@@ -178,12 +178,11 @@ input:focus-visible {
     linear-gradient(145deg, rgb(32 43 36 / 92%), rgb(10 18 14 / 90%));
   background-size: 18px 100%, auto;
   box-shadow: 0 16px 42px rgb(0 0 0 / 42%), 0 0 28px rgb(220 183 104 / 10%);
-  backdrop-filter: blur(9px);
   pointer-events: none;
   font-family: var(--fangsong);
   scale: var(--map-poem-zoom-scale, 1);
   transform-origin: bottom center;
-  transition: opacity 160ms ease, scale 90ms linear;
+  transition: scale 90ms linear;
   will-change: scale;
 }
 
@@ -357,22 +356,13 @@ input:focus-visible {
   height: 180px;
   overflow: visible;
   opacity: 0.92;
-  mix-blend-mode: screen;
   pointer-events: none;
-}
-
-.map-moving .poem-effect {
-  opacity: 0;
 }
 
 .map-moving .poem-effect *,
 .map-moving .poem-effect *::before,
 .map-moving .poem-effect *::after {
   animation-play-state: paused !important;
-}
-
-.map-moving:not(.map-wheel-zooming) .map-poem-sign {
-  opacity: 0;
 }
 
 .poem-effect .effect-core,
@@ -1579,7 +1569,6 @@ input:focus-visible {
     max-width: calc(100vw - 26px);
     max-height: calc(var(--map-poem-column-height, 184px) + 31px);
     padding: 11px 9px 10px;
-    backdrop-filter: blur(7px);
   }
   .map-poem-sign h1 { font-size: var(--map-poem-title-size, 18px); }
   .map-poem-author {

@@ -307,6 +307,7 @@ export function App() {
           aria-hidden={libraryOpen ? true : undefined}
         >
           <span>地形 Natural Earth</span>
+          <span>历史区划为概念演绎</span>
           <a href="https://openfreemap.org/" target="_blank" rel="noreferrer">OpenFreeMap</a>
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a>
         </footer>
