@@ -20,7 +20,7 @@ export type PlaceRelation =
 
 export type Confidence = 'high' | 'medium' | 'low'
 
-export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
+export type DatePrecision = 'exact' | 'circa' | 'range' | 'period' | 'disputed'
 
 export type SchoolLevel = 'primary' | 'middle'
 
@@ -42,6 +42,8 @@ export interface Poem {
   year: number
   yearLabel: string
   eraLabel: string
+  datePrecision: DatePrecision
+  dateEvidence: string
   lines: string[]
   longitude: number
   latitude: number

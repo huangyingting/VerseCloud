@@ -1,6 +1,7 @@
 import { poems } from '../src/data/poems'
 import { schoolPoems, schoolPoemTextKey } from '../src/data/schoolPoems'
 import { schoolPoemSeeds } from '../src/data/schoolPoems.generated'
+import { schoolPoemDateCorrections } from '../src/data/schoolPoemDates'
 import { elevateNearbyPoemPlaces } from '../src/lib/poemPlaces'
 
 const expectedCurriculumPoems = 194
@@ -14,6 +15,10 @@ const genericCityLabels = new Set([
   '沛县', '溧阳', '渭城', '邺城', '朝歌', '丰镐',
 ])
 const genericPlaces = poems.filter((poem) => genericCityLabels.has(poem.placeName))
+const genericDates = poems.filter((poem) =>
+  /教材篇目/u.test(poem.eraLabel)
+  || /^(先秦|汉代|魏晋|南北朝|隋代|唐代|五代|宋代|元代|明代|清代)$/u.test(poem.yearLabel),
+)
 
 if (schoolPoemSeeds.length !== expectedCurriculumPoems) {
   throw new Error(`Expected ${expectedCurriculumPoems} curriculum poems, found ${schoolPoemSeeds.length}`)
@@ -23,6 +28,12 @@ if (missing.length > 0) {
 }
 if (genericPlaces.length > 0) {
   throw new Error(`Generic city-only poem places: ${genericPlaces.map((poem) => `${poem.title}=${poem.placeName}`).join('、')}`)
+}
+if (Object.keys(schoolPoemDateCorrections).length !== expectedCurriculumPoems) {
+  throw new Error(`Expected ${expectedCurriculumPoems} poem-level dates, found ${Object.keys(schoolPoemDateCorrections).length}`)
+}
+if (genericDates.length > 0) {
+  throw new Error(`Generic dynasty-only poem dates: ${genericDates.map((poem) => poem.title).join('、')}`)
 }
 
 const periodCounts = Object.fromEntries(
@@ -37,7 +48,9 @@ console.log(JSON.stringify({
   middle: poems.filter((poem) => poem.curriculumLevels?.includes('middle')).length,
   periodCounts,
   individuallyEvidencedPlaces: poems.filter((poem) => poem.evidence.trim().length >= 18).length,
+  individuallyEvidencedDates: poems.filter((poem) => poem.dateEvidence.trim().length >= 24).length,
   genericCityOnlyPlaces: genericPlaces.length,
+  genericDynastyOnlyDates: genericDates.length,
   relationCounts: Object.fromEntries(
     [...new Set(poems.map((poem) => poem.relation))]
       .map((relation) => [relation, poems.filter((poem) => poem.relation === relation).length]),
@@ -45,6 +58,22 @@ console.log(JSON.stringify({
   confidenceCounts: Object.fromEntries(
     [...new Set(poems.map((poem) => poem.confidence))]
       .map((confidence) => [confidence, poems.filter((poem) => poem.confidence === confidence).length]),
+  ),
+  datePrecisionCounts: Object.fromEntries(
+    [...new Set(poems.map((poem) => poem.datePrecision))]
+      .map((precision) => [precision, poems.filter((poem) => poem.datePrecision === precision).length]),
+  ),
+  datePrecisionByPeriod: Object.fromEntries(
+    [...new Set(poems.map((poem) => poem.dynasty))].map((dynasty) => {
+      const periodPoems = poems.filter((poem) => poem.dynasty === dynasty)
+      return [dynasty, Object.fromEntries(
+        [...new Set(periodPoems.map((poem) => poem.datePrecision))]
+          .map((precision) => [
+            precision,
+            periodPoems.filter((poem) => poem.datePrecision === precision).length,
+          ]),
+      )]
+    }),
   ),
   maximumLiftTier: Math.max(...elevateNearbyPoemPlaces(poems).map((place) => place.liftTier)),
 }, null, 2))

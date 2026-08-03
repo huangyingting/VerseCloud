@@ -109,8 +109,8 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.getByText('移舟泊烟渚，', { exact: true })).toBeVisible()
   await expect(page.getByText('日暮客愁新。', { exact: true })).toBeVisible()
   await expect(page.locator('.map-poem-sign')).toHaveAttribute('data-sentence-count', '4')
-  await expect(page.locator('.era-year')).toHaveText('约730')
-  await expect(page.locator('.era-panel p')).toHaveText('约开元十八年')
+  await expect(page.locator('.era-year')).toHaveText('730年')
+  await expect(page.locator('.era-panel p')).toHaveText('开元十八年 · 漫游吴越')
   await expect(page.locator('.soundscape-status')).toHaveAttribute(
     'data-poem-soundscape',
     '烟渚近月',
@@ -175,9 +175,7 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   )
   expect(centerDelta(restoredSignBounds!, initialSignBounds!)).toBeLessThan(12)
 
-  await page.getByRole('button', { name: '秋', exact: true }).click()
-  await expect(page.locator('main')).toHaveClass(/season-autumn/)
-  await expect(page.locator('.geographic-map')).toHaveAttribute('data-season', 'autumn')
+  await expect(page.locator('.season-switch')).toHaveCount(0)
 
   await page.getByRole('button', { name: /诗库/ }).click()
   await page.locator('[data-library-poem="li-bai-baidi"]').click()
@@ -186,8 +184,8 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   await expect(page.getByText('朝辞白帝彩云间，', { exact: true })).toBeVisible()
   await expect(page.getByText('千里江陵一日还。', { exact: true })).toBeVisible()
   await expect(page.locator('.map-poem-sign')).toHaveAttribute('data-sentence-count', '4')
-  await expect(page.locator('.era-year')).toHaveText('759')
-  await expect(page.locator('.era-panel p')).toHaveText('乾元二年')
+  await expect(page.locator('.era-year')).toHaveText('759年春')
+  await expect(page.locator('.era-panel p')).toHaveText('乾元二年 · 遇赦东归')
   await expect(page.locator('.soundscape-status')).toHaveAttribute(
     'data-poem-soundscape',
     '彩云轻舟',
@@ -252,11 +250,15 @@ test('publishes and browses every literary period', async ({ page }) => {
     await expect(page.locator('.library-poems > button')).toHaveCount(period.count)
     await expect(page.locator('.poem-library')).toContainText(period.label)
     await expect(page.locator('.library-evidence')).toBeVisible()
+    await expect(page.locator('.date-evidence')).not.toContainText('教材篇目')
     await page.locator('.poem-library > header button').click()
   }
 
   await page.getByRole('button', { name: /诗库/ }).click()
-  await page.getByRole('searchbox', { name: '搜索当前时期的诗词' }).fill('袁枚')
+  const qingSearch = page.getByRole('searchbox', { name: '搜索当前时期的诗词' })
+  await qingSearch.fill('1839年')
+  await expect(page.locator('.library-poems > button')).toHaveCount(2)
+  await qingSearch.fill('袁枚')
   await expect(page.locator('.library-poems > button')).toHaveCount(2)
   await expect(page.locator('.library-search b')).toHaveText('2/10')
   await page.locator('[data-library-poem="yuan-mei-moss"]').click()
@@ -265,6 +267,7 @@ test('publishes and browses every literary period', async ({ page }) => {
     'true',
   )
   await expect(page.locator('.library-evidence')).toContainText('金陵随园')
+  await expect(page.locator('.date-evidence')).toContainText('乾隆年间 · 随园时期')
   await page.locator('.poem-library > header button').click()
   await expect(page.getByRole('heading', { name: '苔', exact: true })).toBeVisible()
   await page.getByRole('button', { name: /打开诗库/ }).click()

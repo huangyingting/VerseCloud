@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { snapshots } from './mapSnapshots'
 import { defaultPoem, poems } from './poems'
 import { schoolPoems, schoolPoemTextKey } from './schoolPoems'
+import { schoolPoemDateCorrections } from './schoolPoemDates'
 import { schoolPoemSeeds } from './schoolPoems.generated'
 import { schoolPoemPlaceCorrections } from './schoolPoemPlaces'
 
@@ -48,8 +49,32 @@ describe('curated poem corpus', () => {
       expect.soft(published?.relation, `${schoolPoem.title} relation`).toBe(schoolPoem.relation)
       expect.soft(published?.confidence, `${schoolPoem.title} confidence`).toBe(schoolPoem.confidence)
       expect.soft(published?.evidence, `${schoolPoem.title} evidence`).toBe(schoolPoem.evidence)
+      expect.soft(published?.year, `${schoolPoem.title} year`).toBe(schoolPoem.year)
+      expect.soft(published?.yearLabel, `${schoolPoem.title} yearLabel`).toBe(schoolPoem.yearLabel)
+      expect.soft(published?.eraLabel, `${schoolPoem.title} eraLabel`).toBe(schoolPoem.eraLabel)
+      expect.soft(published?.datePrecision, `${schoolPoem.title} datePrecision`).toBe(schoolPoem.datePrecision)
+      expect.soft(published?.dateEvidence, `${schoolPoem.title} dateEvidence`).toBe(schoolPoem.dateEvidence)
     })
     expect(poems.filter((poem) => poem.curriculumLevels)).toHaveLength(194)
+  })
+
+  it('requires one explicit chronology per school poem without dynasty placeholders', () => {
+    const seedIds = schoolPoemSeeds.map((poem) => poem.sourceId).sort()
+    const correctionIds = Object.keys(schoolPoemDateCorrections).sort()
+    const corrections = Object.values(schoolPoemDateCorrections)
+
+    expect(correctionIds).toEqual(seedIds)
+    expect(corrections).toHaveLength(194)
+    expect(new Set(corrections.map((correction) => correction.dateEvidence)).size).toBe(194)
+
+    corrections.forEach((correction) => {
+      expect(correction.yearLabel.trim().length).toBeGreaterThan(0)
+      expect(correction.eraLabel.trim().length).toBeGreaterThan(0)
+      expect(correction.yearLabel).not.toMatch(/^(先秦|汉代|魏晋|南北朝|隋代|唐代|五代|宋代|元代|明代|清代)$/u)
+      expect(correction.eraLabel).not.toContain('教材篇目')
+      expect(correction.dateEvidence.length).toBeGreaterThanOrEqual(24)
+      expect(['exact', 'circa', 'range', 'period', 'disputed']).toContain(correction.datePrecision)
+    })
   })
 
   it('requires one explicit, independently evidenced place correction per school poem', () => {
@@ -136,6 +161,9 @@ describe('curated poem corpus', () => {
       expect(poem.latitude).toBeGreaterThanOrEqual(16)
       expect(poem.latitude).toBeLessThanOrEqual(53)
       expect(poem.evidence.length).toBeGreaterThanOrEqual(18)
+      expect(poem.dateEvidence.length).toBeGreaterThanOrEqual(24)
+      expect(poem.yearLabel).not.toMatch(/^(先秦|汉代|魏晋|南北朝|隋代|唐代|五代|宋代|元代|明代|清代)$/u)
+      expect(poem.eraLabel).not.toContain('教材篇目')
       expect(poem.sourceLabel.length).toBeGreaterThan(0)
       expect(poem.sourceUrl).toMatch(/^https:\/\//)
       expect(poem.accent).toMatch(/^#[0-9a-f]{6}$/i)
@@ -148,10 +176,7 @@ describe('curated poem corpus', () => {
         .filter((poem) => poem.dynasty === snapshot.dynasty)
         .forEach((poem) => {
           expect(poem.year).toBeGreaterThanOrEqual(snapshot.startYear)
-          // Literary periods overlap political transitions by a few years;
-          // the Five Dynasties corpus includes Li Yu's post-conquest works.
-          const graceYears = snapshot.dynasty === 'five-dynasties' ? 20 : 0
-          expect(poem.year).toBeLessThanOrEqual(snapshot.endYear + graceYears)
+          expect(poem.year).toBeLessThanOrEqual(snapshot.endYear)
         })
     })
   })

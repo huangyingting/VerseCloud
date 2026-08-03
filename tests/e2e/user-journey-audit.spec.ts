@@ -104,7 +104,7 @@ async function inspectInteraction(
       .filter(visible)
     const coreTargets = controls.filter((element) => element.matches([
       '.enter-button', '.brand', '.dynasty-nav button', '.library-button',
-      '.icon-button', '.verse-compass', '.season-switch button',
+      '.icon-button', '.verse-compass',
       '.poem-library > header button', '.curriculum-filter button',
       '.library-search input', '.library-poems > button', '.library-evidence a',
       '.poem-group-choice',
@@ -295,11 +295,6 @@ test('records a desktop user journey across every primary interaction', async ({
   await page.getByRole('button', { name: '打开声音' }).click()
   await record('restore-audio', '打开声音', 'soundscape restored')
 
-  for (const season of ['夏', '秋', '冬', '春']) {
-    await page.getByRole('button', { name: season, exact: true }).click()
-    await record(`season-${season}`, '四时场景', `${season}季视觉状态 selected`)
-  }
-
   await page.getByRole('button', { name: '归正地图方向' }).click()
   await record('reset-map-bearing', '归正地图方向', 'map bearing reset without losing selected poem')
 
@@ -451,8 +446,7 @@ test('records a mobile user journey, touch targets, and responsive states', asyn
   )
   await record('enter-experience', '展开诗卷', 'mobile map and poem slip loaded')
 
-  await page.getByRole('button', { name: '冬', exact: true }).click()
-  await record('season-winter', '冬', 'winter palette selected with touch')
+  await expect(page.locator('.season-switch')).toHaveCount(0)
 
   await page.locator('.dynasty-nav [data-dynasty="song"]').click()
   await waitForStableMap(page)

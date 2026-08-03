@@ -1,23 +1,13 @@
-import type { DynastyId, Poem, PoemVisualEffect } from '../types'
+import type { Poem, PoemVisualEffect } from '../types'
 import { schoolPoemSeeds } from './schoolPoems.generated'
 import {
   schoolPoemPlaceCorrections,
   type SchoolPoemPlaceCorrection,
 } from './schoolPoemPlaces'
-
-const dynastyApproximateYears: Record<DynastyId, number> = {
-  'pre-qin': -500,
-  han: 100,
-  'wei-jin': 350,
-  'southern-northern': 520,
-  sui: 600,
-  tang: 750,
-  'five-dynasties': 940,
-  song: 1120,
-  yuan: 1320,
-  ming: 1510,
-  qing: 1780,
-}
+import {
+  schoolPoemDateCorrections,
+  type SchoolPoemDateCorrection,
+} from './schoolPoemDates'
 
 const effects: Array<{ id: PoemVisualEffect; label: string; accent: string }> = [
   { id: 'petals-embers', label: '花影 · 流光', accent: '#c98772' },
@@ -29,34 +19,6 @@ const effects: Array<{ id: PoemVisualEffect; label: string; accent: string }> = 
   { id: 'waterfall', label: '飞泉 · 银河', accent: '#8da5c2' },
   { id: 'morning-rain', label: '朝雨 · 新绿', accent: '#9eb984' },
 ]
-
-const dynastyEraLabels: Record<DynastyId, string> = {
-  'pre-qin': '先秦教材篇目',
-  han: '两汉教材篇目',
-  'wei-jin': '魏晋教材篇目',
-  'southern-northern': '南北朝教材篇目',
-  sui: '隋代教材篇目',
-  tang: '唐代教材篇目',
-  'five-dynasties': '五代教材篇目',
-  song: '宋代教材篇目',
-  yuan: '元代教材篇目',
-  ming: '明代教材篇目',
-  qing: '清代教材篇目',
-}
-
-const dynastyYearLabels: Record<DynastyId, string> = {
-  'pre-qin': '先秦',
-  han: '汉代',
-  'wei-jin': '魏晋',
-  'southern-northern': '南北朝',
-  sui: '隋代',
-  tang: '唐代',
-  'five-dynasties': '五代',
-  song: '宋代',
-  yuan: '元代',
-  ming: '明代',
-  qing: '清代',
-}
 
 function stableHash(value: string) {
   return [...value].reduce((hash, character) =>
@@ -72,18 +34,23 @@ export const schoolPoems: Poem[] = schoolPoemSeeds.map((seed) => {
   if (!correction) {
     throw new Error(`Missing individual place correction for school poem ${seed.sourceId} (${seed.title})`)
   }
+  const date = (schoolPoemDateCorrections as Record<string, SchoolPoemDateCorrection>)[seed.sourceId]
+  if (!date) {
+    throw new Error(`Missing individual date correction for school poem ${seed.sourceId} (${seed.title})`)
+  }
   const hash = stableHash(seed.sourceId)
   const effect = effects[hash % effects.length]
-  const year = dynastyApproximateYears[seed.dynasty]
 
   return {
     id: `school-${seed.sourceId}`,
     title: seed.title,
     author: seed.author,
     dynasty: seed.dynasty,
-    year,
-    yearLabel: dynastyYearLabels[seed.dynasty],
-    eraLabel: dynastyEraLabels[seed.dynasty],
+    year: date.year,
+    yearLabel: date.yearLabel,
+    eraLabel: date.eraLabel,
+    datePrecision: date.datePrecision,
+    dateEvidence: date.dateEvidence,
     lines: seed.lines,
     longitude: correction.longitude,
     latitude: correction.latitude,

@@ -755,34 +755,11 @@ input:focus-visible {
 }
 
 .vignette,
-.season-atmosphere,
 .paper-grain {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-}
-
-.season-atmosphere {
-  opacity: 0.08;
-  mix-blend-mode: normal;
-  transition: background 700ms ease, opacity 700ms ease;
-}
-
-.season-spring .season-atmosphere {
-  background: radial-gradient(circle at 45% 48%, rgb(132 181 125 / 48%), rgb(191 125 111 / 12%) 56%, transparent 78%);
-}
-
-.season-summer .season-atmosphere {
-  background: radial-gradient(circle at 48% 52%, rgb(63 142 102 / 45%), rgb(31 100 91 / 15%) 58%, transparent 82%);
-}
-
-.season-autumn .season-atmosphere {
-  background: radial-gradient(circle at 46% 46%, rgb(196 132 61 / 44%), rgb(126 68 42 / 14%) 62%, transparent 84%);
-}
-
-.season-winter .season-atmosphere {
-  background: radial-gradient(circle at 46% 44%, rgb(165 193 195 / 42%), rgb(76 98 112 / 16%) 60%, transparent 84%);
 }
 
 .vignette {
@@ -1079,49 +1056,6 @@ input:focus-visible {
   letter-spacing: 0.2em;
 }
 
-.season-switch {
-  position: absolute;
-  z-index: 5;
-  top: 96px;
-  right: 30px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #837c69;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-}
-
-.season-switch > span {
-  writing-mode: vertical-rl;
-}
-
-.season-switch > div {
-  display: flex;
-  padding: 3px;
-  border: 1px solid rgb(221 200 155 / 15%);
-  background: rgb(9 18 14 / 62%);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
-  backdrop-filter: blur(9px);
-}
-
-.season-switch button {
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  color: #7f7b6d;
-  background: transparent;
-  cursor: pointer;
-  transition: color 220ms ease, background-color 220ms ease;
-}
-
-.season-switch button:hover,
-.season-switch button.active {
-  color: #f0dfba;
-  background: rgb(190 156 89 / 15%);
-}
-
 .map-credits {
   position: absolute;
   z-index: 4;
@@ -1385,8 +1319,8 @@ input:focus-visible {
   background: rgb(4 10 7 / 34%);
 }
 
-.library-evidence > span,
-.library-evidence > b {
+.library-evidence > div > span,
+.library-evidence > div > b {
   display: inline-block;
   margin-right: 6px;
   padding: 4px 7px;
@@ -1397,9 +1331,20 @@ input:focus-visible {
   letter-spacing: 0.08em;
 }
 
-.library-evidence > b {
+.library-evidence > div > b {
   border-color: rgb(121 170 160 / 22%);
   color: #8fb6ae;
+}
+
+.library-evidence > div + div {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgb(225 205 164 / 10%);
+}
+
+.library-evidence .date-evidence > span {
+  border-color: rgb(208 182 116 / 28%);
+  color: #d0b674;
 }
 
 .library-evidence p {
@@ -1603,10 +1548,6 @@ input:focus-visible {
     font-size: 18px;
   }
 
-  .season-switch {
-    top: 126px;
-    right: 18px;
-  }
 }
 
 @media (max-width: 680px) {
@@ -1665,16 +1606,6 @@ input:focus-visible {
   .verse-compass { left: 13px; bottom: 15px; }
   .maplibregl-ctrl-bottom-right { right: 8px; bottom: 51px; }
 
-  .season-switch {
-    top: 139px;
-    right: 12px;
-    bottom: auto;
-    left: auto;
-    gap: 0;
-  }
-
-  .season-switch > span { display: none; }
-  .season-switch button { width: 44px; height: 44px; }
   .map-credits {
     right: 8px;
     bottom: 5px;

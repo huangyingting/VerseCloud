@@ -3,7 +3,40 @@ import { schoolPoems, schoolPoemTextKey } from './schoolPoems'
 
 const sourceUrl = 'https://github.com/chinese-poetry/chinese-poetry'
 
-const curatedPoems: Poem[] = [
+type UndatedPoem = Omit<Poem, 'datePrecision' | 'dateEvidence'>
+type PoemChronology = Pick<
+  Poem,
+  'year' | 'yearLabel' | 'eraLabel' | 'datePrecision' | 'dateEvidence'
+>
+
+const chronology = (
+  year: number,
+  yearLabel: string,
+  eraLabel: string,
+  datePrecision: Poem['datePrecision'],
+  dateEvidence: string,
+): PoemChronology => ({ year, yearLabel, eraLabel, datePrecision, dateEvidence })
+
+const curatedPoemChronologies: Record<string, PoemChronology> = {
+  'jing-ke-yishui-song': chronology(-227, '前227年', '燕王喜二十八年 · 易水送别', 'exact', '《战国策·燕策三》将易水送别置于荆轲西行刺秦王的当年，即秦王政二十年、前227年。'),
+  'liu-bang-da-feng-ge': chronology(-195, '前195年', '汉高祖十二年 · 还乡沛县', 'exact', '《史记》《汉书》均记刘邦平定英布后于高祖十二年还乡置酒，在沛宫击筑作歌。'),
+  'han-yuefu-shang-ye': chronology(50, '约1世纪', '东汉乐府歌辞', 'period', '《上邪》收入《鼓吹曲辞》，现存传本没有作者、题序或历史本事，只能约定在汉代乐府传统中。'),
+  'cao-zhi-seven-steps': chronology(223, '传为220—226年', '曹魏黄初年间 · 本事有争议', 'disputed', '七步成诗故事晚出，文本版本亦不一致；若依曹丕召试曹植的传统本事，只能系于黄初年间。'),
+  'tao-yuanming-guiyuan-3': chronology(405, '约405年', '东晋义熙元年 · 辞彭泽令后', 'circa', '《归园田居》组诗通常系于陶渊明义熙元年辞彭泽令、返回柴桑田居以后。'),
+  'wang-ji-ru-ruoye': chronology(510, '约502—519年', '南朝梁天监年间', 'range', '王籍任职会稽、游若耶溪的具体年份未载，只能按其梁天监年间的官历和交游范围系年。'),
+  'wu-jun-mountain-poem': chronology(510, '约502—519年', '南朝梁天监年间', 'period', '《山中杂诗》没有地名、题序或可识别事件，现只能置于吴均天监年间的主要诗歌创作期。'),
+  'xue-daoheng-homecoming': chronology(585, '585年正月初七', '开皇五年 · 出使南陈', 'exact', '薛道衡开皇四年出使南陈并羁留建康，次年人日感叹离家已二年，作于开皇五年正月初七。'),
+  'sui-anonymous-farewell': chronology(600, '约581—618年', '隋代乐府歌辞 · 年代未定', 'period', '作品以隋代无名氏歌辞传世，没有作者、送别对象和题序，无法缩小到隋代某一帝年。'),
+  'yang-guang-spring-river': chronology(605, '约605—610年', '大业初年 · 江都曲辞', 'range', '杨广创制《春江花月夜》曲题与早期巡幸江都相联，现无材料精确到某次江行或某一天。'),
+  'li-yu-yu-mei-ren': chronology(978, '约978年', '宋太平兴国三年 · 汴京囚居', 'circa', '词作于李煜降宋后囚居汴京的末期，传统常与978年七夕及随后被鸩本事相联，但触发事件仍有争议。'),
+  'li-yu-xiang-jian-huan': chronology(977, '约975—978年', '降宋以后 · 汴京囚居', 'range', '亡国幽囚之意与李煜975年降宋后的处境相合，作品没有自题，无法进一步确定年份。'),
+  'li-jing-huanxisha': chronology(952, '约943—961年', '南唐保大至中兴年间', 'period', '词无题序纪年，只能按李璟在位及金陵宫廷创作时期系年，具体楼阁与年月均不可考。'),
+  'su-shi-shui-diao-ge-tou': chronology(1076, '1076年中秋', '熙宁九年 · 丙辰', 'exact', '词序明记“丙辰中秋，欢饮达旦”，苏轼当时知密州，作品可精确到1076年中秋。'),
+  'yang-shen-linjiangxian': chronology(1540, '约1524—1559年', '嘉靖年间 · 谪滇以后', 'range', '此词收入杨慎谪滇后所作《廿一史弹词》，可定在1524年流放云南至去世前，具体编写年未定。'),
+  'yuan-mei-moss': chronology(1765, '约1750—1797年', '乾隆年间 · 随园时期', 'range', '《苔》没有自题纪年；袁枚1749年辞官后长期居随园写作，只能按其随园诗期给出范围。'),
+}
+
+const curatedPoems: UndatedPoem[] = [
   {
     id: 'shijing-guan-ju', title: '关雎', author: '佚名', dynasty: 'pre-qin',
     year: -900, yearLabel: '约前9世纪', eraLabel: '西周诗歌',
@@ -430,19 +463,39 @@ export const poems: Poem[] = [...curatedPoems, ...schoolPoems]
   })
   .map((poem) => {
     const schoolPoem = schoolPoemByText.get(schoolPoemTextKey(poem))
-    if (!schoolPoem) return poem
+    const poemChronology = schoolPoem ?? curatedPoemChronologies[poem.id]
+    if (!poemChronology) {
+      throw new Error(`Missing individual chronology for published poem ${poem.id} (${poem.title})`)
+    }
     return {
       ...poem,
-      longitude: schoolPoem.longitude,
-      latitude: schoolPoem.latitude,
-      placeId: schoolPoem.placeId,
-      placeName: schoolPoem.placeName,
-      relation: schoolPoem.relation,
-      confidence: schoolPoem.confidence,
-      evidence: schoolPoem.evidence,
-      curriculumLevels: schoolPoem.curriculumLevels,
+      year: poemChronology.year,
+      yearLabel: poemChronology.yearLabel,
+      eraLabel: poemChronology.eraLabel,
+      datePrecision: poemChronology.datePrecision,
+      dateEvidence: poemChronology.dateEvidence,
+      ...(schoolPoem && {
+        longitude: schoolPoem.longitude,
+        latitude: schoolPoem.latitude,
+        placeId: schoolPoem.placeId,
+        placeName: schoolPoem.placeName,
+        relation: schoolPoem.relation,
+        confidence: schoolPoem.confidence,
+        evidence: schoolPoem.evidence,
+        sourceLabel: schoolPoem.sourceLabel,
+        sourceUrl: schoolPoem.sourceUrl,
+        curriculumLevels: schoolPoem.curriculumLevels,
+      }),
     }
   })
+
+export const datePrecisionLabels: Record<Poem['datePrecision'], string> = {
+  exact: '明确纪年',
+  circa: '约年考订',
+  range: '可考范围',
+  period: '时代约定',
+  disputed: '年代有异说',
+}
 
 export const defaultPoem = poems.find((poem) => poem.id === 'du-fu-chun-wang') ?? poems[0]
 

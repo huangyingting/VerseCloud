@@ -11,6 +11,7 @@ import {
 import { dynastyLabels, snapshots } from './data/mapSnapshots'
 import {
   confidenceLabels,
+  datePrecisionLabels,
   defaultPoem,
   poems,
   relationLabels,
@@ -23,17 +24,11 @@ import {
 } from './lib/soundscape'
 import { projectPoint } from './lib/geo'
 import { SceneBoundary } from './components/SceneBoundary'
-import type { DynastyId, Poem, ScenePoint, Season, SoundscapeMix } from './types'
+import type { DynastyId, Poem, ScenePoint, SoundscapeMix } from './types'
 
 type LibraryLevel = 'all' | 'primary' | 'middle'
 
 const initialFocus = { x: 0, y: 0 }
-const seasons: Array<{ id: Season; label: string; note: string }> = [
-  { id: 'spring', label: '春', note: '花色与新绿' },
-  { id: 'summer', label: '夏', note: '苍翠与深水' },
-  { id: 'autumn', label: '秋', note: '暖金与澄江' },
-  { id: 'winter', label: '冬', note: '霜白与寒水' },
-]
 const VerseScene = lazy(() =>
   import('./components/VerseScene').then((module) => ({ default: module.VerseScene })),
 )
@@ -44,7 +39,6 @@ export function App() {
   const [entered, setEntered] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(false)
   const [muted, setMuted] = useState(false)
-  const [season, setSeason] = useState<Season>('spring')
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [libraryQuery, setLibraryQuery] = useState('')
   const [libraryLevel, setLibraryLevel] = useState<LibraryLevel>('all')
@@ -76,6 +70,7 @@ export function App() {
         poem.title,
         poem.author,
         poem.placeName,
+        poem.yearLabel,
         poem.eraLabel,
         poem.curriculumLevels?.includes('primary') ? '小学' : '',
         poem.curriculumLevels?.includes('middle') ? '初中' : '',
@@ -197,7 +192,7 @@ export function App() {
   }, [])
 
   return (
-    <main id="top" className={`app-shell season-${season}`}>
+    <main id="top" className="app-shell">
       <div
         className="scene-layer"
         inert={!entered || libraryOpen ? true : undefined}
@@ -209,7 +204,6 @@ export function App() {
               <VerseScene
                 poems={dynastyPoems}
                 selectedPoem={selectedPoem}
-                season={season}
                 onSelectPoem={selectPoem}
                 onFocusChange={handleFocusChange}
               />
@@ -219,7 +213,6 @@ export function App() {
       </div>
 
       <div className="vignette" aria-hidden="true" />
-      <div className="season-atmosphere" aria-hidden="true" />
       <div className="paper-grain" aria-hidden="true" />
 
       <header
@@ -303,33 +296,8 @@ export function App() {
         <div className="timeline-track">
           <span />
         </div>
-        <small>公元纪年</small>
+        <small>考订纪年</small>
       </aside>
-
-      {entered && (
-        <section
-          className="season-switch"
-          aria-label="四时场景"
-          inert={libraryOpen ? true : undefined}
-          aria-hidden={libraryOpen ? true : undefined}
-        >
-          <span>四时</span>
-          <div>
-            {seasons.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={season === item.id ? 'active' : ''}
-                aria-pressed={season === item.id}
-                title={item.note}
-                onClick={() => setSeason(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
 
       {entered && (
         <footer
@@ -393,7 +361,7 @@ export function App() {
               <input
                 type="search"
                 value={libraryQuery}
-                placeholder={`搜索${activeSnapshot.dynastyLabel}诗题、作者或地点`}
+                placeholder={`搜索${activeSnapshot.dynastyLabel}诗题、作者、年代或地点`}
                 onChange={(event) => setLibraryQuery(event.target.value)}
                 autoFocus
               />
@@ -420,7 +388,7 @@ export function App() {
                           .join('·')}
                       </em>
                     )}
-                    <span>{poem.author} · {poem.placeName}</span>
+                    <span>{poem.author} · {poem.yearLabel} · {poem.placeName}</span>
                   </small>
                 </button>
               ))}
@@ -428,12 +396,19 @@ export function App() {
                 <p className="library-empty">没有匹配的作品，换一个关键词试试。</p>
               )}
             </div>
-            <section className="library-evidence" aria-label="当前作品地点说明">
-              <span style={{ '--poem-accent': selectedPoem.accent } as CSSProperties}>
-                {relationLabels[selectedPoem.relation]}
-              </span>
-              <b>{confidenceLabels[selectedPoem.confidence]}</b>
-              <p>{selectedPoem.evidence}</p>
+            <section className="library-evidence" aria-label="当前作品考订说明">
+              <div className="date-evidence">
+                <span>{datePrecisionLabels[selectedPoem.datePrecision]}</span>
+                <b>{selectedPoem.yearLabel} · {selectedPoem.eraLabel}</b>
+                <p>{selectedPoem.dateEvidence}</p>
+              </div>
+              <div className="place-evidence">
+                <span style={{ '--poem-accent': selectedPoem.accent } as CSSProperties}>
+                  {relationLabels[selectedPoem.relation]}
+                </span>
+                <b>{confidenceLabels[selectedPoem.confidence]}</b>
+                <p>{selectedPoem.evidence}</p>
+              </div>
               <a href={selectedPoem.sourceUrl} target="_blank" rel="noreferrer">
                 文本来源：{selectedPoem.sourceLabel}
               </a>

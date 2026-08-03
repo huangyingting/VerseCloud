@@ -14,12 +14,11 @@ import { tangMapLabels, tangRegionDivisions } from '../data/tangGeography'
 import { projectPoint } from '../lib/geo'
 import { elevateNearbyPoemPlaces } from '../lib/poemPlaces'
 import { emptyPoemRoute, poemRoute } from '../lib/poemRoute'
-import type { Poem, ScenePoint, Season } from '../types'
+import type { Poem, ScenePoint } from '../types'
 
 interface VerseSceneProps {
   poems: Poem[]
   selectedPoem: Poem
-  season: Season
   onSelectPoem: (poem: Poem) => void
   onFocusChange: (point: ScenePoint) => void
 }
@@ -119,58 +118,6 @@ const geographicStyle: StyleSpecification = {
     'fog-ground-blend': 0.6,
     'atmosphere-blend': 0.5,
   },
-}
-
-const seasonPalettes: Record<Season, {
-  background: string
-  reliefHue: number
-  reliefSaturation: number
-  reliefBrightness: number
-  division: string
-  ocean: string
-  lake: string
-  river: string
-  water: string
-}> = {
-  spring: {
-    background: '#0a1712', reliefHue: 12, reliefSaturation: -0.34, reliefBrightness: 0.5,
-    division: '#c5af7d',
-    ocean: '#08232a', lake: '#14373b', river: '#2f6360', water: '#103137',
-  },
-  summer: {
-    background: '#071711', reliefHue: 32, reliefSaturation: -0.2, reliefBrightness: 0.45,
-    division: '#a9b77a',
-    ocean: '#06262c', lake: '#0d3b3d', river: '#326e67', water: '#0b3336',
-  },
-  autumn: {
-    background: '#17140d', reliefHue: 338, reliefSaturation: -0.28, reliefBrightness: 0.48,
-    division: '#d0a46c',
-    ocean: '#10242a', lake: '#29353a', river: '#657b73', water: '#1b3034',
-  },
-  winter: {
-    background: '#0b1418', reliefHue: 188, reliefSaturation: -0.62, reliefBrightness: 0.56,
-    division: '#b5c0b8',
-    ocean: '#071d29', lake: '#17313d', river: '#6f9298', water: '#102936',
-  },
-}
-
-function applySeasonPalette(map: MapLibreMap, season: Season) {
-  const palette = seasonPalettes[season]
-  map.setPaintProperty('night-paper', 'background-color', palette.background)
-  map.setPaintProperty('earth-relief', 'raster-hue-rotate', palette.reliefHue)
-  map.setPaintProperty('earth-relief', 'raster-saturation', palette.reliefSaturation)
-  map.setPaintProperty('earth-relief', 'raster-brightness-max', palette.reliefBrightness)
-  map.setPaintProperty('water', 'fill-color', [
-    'match',
-    ['get', 'class'],
-    'ocean', palette.ocean,
-    'lake', palette.lake,
-    'river', palette.river,
-    palette.water,
-  ])
-  if (map.getLayer('tang-region-line')) {
-    map.setPaintProperty('tang-region-line', 'line-color', palette.division)
-  }
 }
 
 function historicalLabelCollection(): GeoJSON.FeatureCollection<GeoJSON.Point> {
@@ -995,7 +942,6 @@ function focusSelectedPoem(map: MapLibreMap, poem: Poem) {
 export function VerseScene({
   poems,
   selectedPoem,
-  season,
   onSelectPoem,
   onFocusChange,
 }: VerseSceneProps) {
@@ -1011,7 +957,6 @@ export function VerseScene({
   const journeyOriginRef = useRef(selectedPoem)
   const routeAnimationFrameRef = useRef(0)
   const routeSettleTimerRef = useRef(0)
-  const seasonRef = useRef(season)
   const onSelectRef = useRef(onSelectPoem)
   const onFocusRef = useRef(onFocusChange)
 
@@ -1026,13 +971,6 @@ export function VerseScene({
   useEffect(() => {
     selectedPoemRef.current = selectedPoem
   }, [selectedPoem])
-
-  useEffect(() => {
-    seasonRef.current = season
-    const map = mapRef.current
-    containerRef.current?.setAttribute('data-season', season)
-    if (map?.isStyleLoaded()) applySeasonPalette(map, season)
-  }, [season])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -1214,7 +1152,6 @@ export function VerseScene({
         }))),
       )
       containerRef.current?.setAttribute('data-poem-hit-ready', 'true')
-      applySeasonPalette(map, seasonRef.current)
       if (containerRef.current) {
         void addWebglLabelLayers(map, containerRef.current, poems, showTangContext)
       }
