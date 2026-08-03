@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  base: process.env.GITHUB_ACTIONS ? '/VerseCloud/' : '/',
+  base: '/',
   plugins: [react()],
   optimizeDeps: {
     // MapLibre creates its worker with import.meta.url. Keeping the package as

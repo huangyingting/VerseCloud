@@ -85,7 +85,7 @@ src/lib/                          地理投影、地点错层、路线与音景
 tests/e2e/                        真实浏览器验收测试
 ```
 
-地图组件与 Tone.js 均按需加载。MapLibre worker 使用显式生产资源 URL；画布像素比上限为 1.5，移动端限制瓦片缓存和历史标签数量。生产构建通过 `vite build` 输出静态资源；GitHub Actions 环境会自动使用 `/VerseCloud/` 基路径。
+地图组件与 Tone.js 均按需加载。MapLibre worker 使用显式生产资源 URL；画布像素比上限为 1.5，移动端限制瓦片缓存和历史标签数量。生产构建通过 `vite build` 输出静态资源；GitHub Actions 自动部署至 GitHub Pages 自定义域名 [versecloud.genisisiq.com](https://versecloud.genisisiq.com/)，并使用根路径加载静态资源。
 
 ## 来源与署名
 
