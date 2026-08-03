@@ -117,10 +117,6 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   )
 
   await expect(map).not.toHaveClass(/map-moving/, { timeout: 3_000 })
-  const viewportCenter = {
-    x: (mapBounds?.x ?? 0) + (mapBounds?.width ?? 0) / 2,
-    y: (mapBounds?.y ?? 0) + (mapBounds?.height ?? 0) / 2,
-  }
   // MapLibre updates DOM markers just after its public moveend listeners run.
   await page.waitForTimeout(100)
 
@@ -128,6 +124,33 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
   const initialSignBounds = await poemSign.boundingBox()
   const initialScale = Number(await poemSign.getAttribute('data-zoom-scale'))
   expect(initialSignBounds).not.toBeNull()
+  const wheelStartPositions = JSON.parse(
+    await map.getAttribute('data-poem-screen-positions') ?? '{}',
+  ) as Record<string, { x: number; y: number }>
+  const mapWidth = mapBounds?.width ?? 0
+  const mapHeight = mapBounds?.height ?? 0
+  const safeMargin = 80
+  const anchorCandidate = Object.entries(wheelStartPositions)
+    .filter(([poemId, point]) => (
+      poemId !== 'meng-haoran-jiande'
+      && point.x > safeMargin
+      && point.x < mapWidth - safeMargin
+      && point.y > safeMargin
+      && point.y < mapHeight - safeMargin
+    ))
+    .sort(([, first], [, second]) => {
+      const distanceFromCenter = (point: { x: number; y: number }) => Math.hypot(
+        point.x - mapWidth / 2,
+        point.y - mapHeight / 2,
+      )
+      return distanceFromCenter(second) - distanceFromCenter(first)
+    })[0]
+  if (!anchorCandidate) throw new Error('No safe non-selected poem point for wheel anchor test')
+  const [anchorPoemId, anchorPoint] = anchorCandidate
+  expect(Math.hypot(
+    anchorPoint.x - mapWidth / 2,
+    anchorPoint.y - mapHeight / 2,
+  )).toBeGreaterThan(100)
   await map.evaluate((element) => {
     const recordWheelVisibility = () => {
       if (element.classList.contains('map-wheel-zooming')) {
@@ -142,20 +165,28 @@ test('opens the 3D poetry experience and navigates between poems', async ({ page
     observeWheelZoom.observe(element, { attributes: true, attributeFilter: ['class'] })
     element.addEventListener('wheel', recordWheelVisibility, { capture: true })
   })
-  await page.mouse.move(viewportCenter.x, viewportCenter.y)
+  await page.mouse.move(
+    (mapBounds?.x ?? 0) + anchorPoint.x,
+    (mapBounds?.y ?? 0) + anchorPoint.y,
+  )
   await page.mouse.wheel(0, -900)
   await expect(map).toHaveAttribute('data-wheel-sign-visible', 'true')
   await expect(map).not.toHaveClass(/map-wheel-zooming/, { timeout: 2_000 })
+  await page.waitForTimeout(100)
 
   const focusedSignBounds = await poemSign.boundingBox()
   const focusedScale = Number(await poemSign.getAttribute('data-zoom-scale'))
+  const wheelFocusedPositions = JSON.parse(
+    await map.getAttribute('data-poem-screen-positions') ?? '{}',
+  ) as Record<string, { x: number; y: number }>
+  const focusedAnchorPoint = wheelFocusedPositions[anchorPoemId]
   expect(focusedSignBounds).not.toBeNull()
+  expect(focusedAnchorPoint).toBeTruthy()
   expect(focusedScale).toBeGreaterThan(initialScale)
-  const distanceToCenter = (bounds: NonNullable<typeof initialSignBounds>) => Math.hypot(
-    bounds.x + bounds.width / 2 - viewportCenter.x,
-    bounds.y + bounds.height / 2 - viewportCenter.y,
-  )
-  expect(distanceToCenter(focusedSignBounds!)).toBeLessThan(distanceToCenter(initialSignBounds!))
+  expect(Math.hypot(
+    focusedAnchorPoint.x - anchorPoint.x,
+    focusedAnchorPoint.y - anchorPoint.y,
+  )).toBeLessThanOrEqual(4)
 
   await map.evaluate((element) => element.removeAttribute('data-wheel-sign-visible'))
   await page.mouse.wheel(0, 900)

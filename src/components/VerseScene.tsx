@@ -1,5 +1,4 @@
 import {
-  LngLat,
   Map as MapLibreMap,
   Marker,
   setWorkerUrl,
@@ -976,16 +975,7 @@ export function VerseScene({
     if (!containerRef.current || mapRef.current) return
     const compact = window.matchMedia('(max-width: 680px)').matches
     const elevatedPlaces = elevateNearbyPoemPlaces(poems)
-    type WheelFocusPath = {
-      poemId: string
-      originZoom: number
-      originCenter: LngLat
-      poemCenter: LngLat
-      targetCenter: LngLat
-    }
-    let wheelFocusPath: WheelFocusPath | null = null
-    let wheelGestureActive = false
-    let wheelFocusTimer = 0
+    let wheelZoomTimer = 0
     const map = new MapLibreMap({
       container: containerRef.current,
       style: geographicStyle,
@@ -1004,32 +994,9 @@ export function VerseScene({
       pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
       attributionControl: false,
       fadeDuration: 0,
-      transformCameraUpdate: (next) => {
-        const path = wheelFocusPath
-        if (
-          !wheelGestureActive
-          || !path
-          || path.poemId !== selectedPoemRef.current.id
-        ) return {}
-
-        const boundedZoom = Math.max(next.zoom, path.originZoom)
-        const zoomDelta = boundedZoom - path.originZoom
-        const offsetDecay = 2 ** -zoomDelta
-        const targetLng = path.poemCenter.lng
-          + (path.targetCenter.lng - path.poemCenter.lng) * offsetDecay
-        const targetLat = path.poemCenter.lat
-          + (path.targetCenter.lat - path.poemCenter.lat) * offsetDecay
-        const attraction = Math.min(0.985, 1 - Math.exp(-zoomDelta * 2.8))
-        const focusedCenter = new LngLat(
-          path.originCenter.lng + (targetLng - path.originCenter.lng) * attraction,
-          path.originCenter.lat + (targetLat - path.originCenter.lat) * attraction,
-        )
-
-        return {
-          center: focusedCenter,
-          zoom: boundedZoom,
-        }
-      },
+      // MapLibre's native scroll zoom preserves the geographic point under
+      // the pointer. Do not override camera updates toward the selected poem.
+      scrollZoom: true,
       canvasContextAttributes: {
         antialias: false,
         powerPreference: 'high-performance',
@@ -1045,7 +1012,6 @@ export function VerseScene({
     compass.setAttribute('aria-label', '归正地图方向')
     compass.innerHTML = '<span>南</span><i></i>'
     compass.addEventListener('click', () => {
-      wheelFocusPath = null
       map.easeTo({ bearing: 0, pitch: compact ? 38 : 44, duration: 700 })
     })
     containerRef.current.append(compass)
@@ -1083,50 +1049,20 @@ export function VerseScene({
         focusFrame = 0
       })
     }
-    const finishWheelFocus = () => {
-      wheelGestureActive = false
-      if (wheelFocusTimer) window.clearTimeout(wheelFocusTimer)
-      wheelFocusTimer = 0
+    const finishWheelZoom = () => {
+      if (wheelZoomTimer) window.clearTimeout(wheelZoomTimer)
+      wheelZoomTimer = 0
       containerRef.current?.classList.remove('map-wheel-zooming')
     }
-    const handleWheelFocus = (event: WheelEvent) => {
-      const markerElement = selectedMarkerRef.current?.getElement()
-      if (!markerElement) return
-      const poem = selectedPoemRef.current
-      if (wheelFocusPath?.poemId !== poem.id) wheelFocusPath = null
-      if (
-        event.deltaY > 0
-        && wheelFocusPath
-        && map.getZoom() <= wheelFocusPath.originZoom + 0.015
-      ) {
-        // The inverse journey has reached its origin. A further outward wheel
-        // gesture starts ordinary map zooming from that point.
-        wheelFocusPath = null
-      }
-      if (event.deltaY < 0 && !wheelFocusPath) {
-        const poemCenter = new LngLat(poem.longitude, poem.latitude)
-        const poemPoint = map.project(poemCenter)
-        const markerScale = Number(markerElement.dataset.zoomScale) || 1
-        const markerHeight = markerElement.offsetHeight * markerScale
-        const poemOffset = Math.min(window.innerHeight * 0.3, markerHeight / 2 + 28)
-        wheelFocusPath = {
-          poemId: poem.id,
-          originZoom: map.getZoom(),
-          originCenter: map.getCenter(),
-          poemCenter,
-          targetCenter: map.unproject([poemPoint.x, poemPoint.y - poemOffset]),
-        }
-      }
-
-      wheelGestureActive = true
+    const handleWheelZoom = () => {
       containerRef.current?.classList.add('map-wheel-zooming')
-      if (wheelFocusTimer) window.clearTimeout(wheelFocusTimer)
+      if (wheelZoomTimer) window.clearTimeout(wheelZoomTimer)
       // `zoomend` normally closes the session. Keep a generous fallback for
-      // slow WebGL frames so the final camera update cannot lose its focus.
-      wheelFocusTimer = window.setTimeout(finishWheelFocus, 1_200)
+      // slow WebGL frames so the poem slip cannot remain in moving state.
+      wheelZoomTimer = window.setTimeout(finishWheelZoom, 1_200)
     }
     const canvas = map.getCanvas()
-    canvas.addEventListener('wheel', handleWheelFocus, { passive: true, capture: true })
+    canvas.addEventListener('wheel', handleWheelZoom, { passive: true, capture: true })
 
     map.once('style.load', () => {
       const showTangContext = selectedPoemRef.current.dynasty === 'tang'
@@ -1263,15 +1199,6 @@ export function VerseScene({
         && map.queryRenderedFeatures(event.point, { layers: labelLayers }).length > 0
       map.getCanvas().style.cursor = overLabel ? 'pointer' : ''
     })
-    map.on('dragstart', () => {
-      wheelFocusPath = null
-    })
-    map.on('rotatestart', () => {
-      wheelFocusPath = null
-    })
-    map.on('pitchstart', () => {
-      wheelFocusPath = null
-    })
     map.on('movestart', () => {
       containerRef.current?.classList.add('map-moving')
       groupPickerRef.current?.remove()
@@ -1287,7 +1214,7 @@ export function VerseScene({
       updateMarkerDensity()
       updateVerseScale()
     })
-    map.on('zoomend', finishWheelFocus)
+    map.on('zoomend', finishWheelZoom)
     map.on('resize', () => {
       updateVerseSizing()
       updatePoemScreenPositions()
@@ -1303,9 +1230,8 @@ export function VerseScene({
         window.clearTimeout(routeSettleTimerRef.current)
         routeSettleTimerRef.current = 0
       }
-      finishWheelFocus()
-      wheelFocusPath = null
-      canvas.removeEventListener('wheel', handleWheelFocus, true)
+      finishWheelZoom()
+      canvas.removeEventListener('wheel', handleWheelZoom, true)
       compass.remove()
       selectedMarkerRef.current?.remove()
       effectMarkerRef.current?.remove()

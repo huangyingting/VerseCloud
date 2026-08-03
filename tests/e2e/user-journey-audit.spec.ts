@@ -380,10 +380,10 @@ test('records a desktop user journey across every primary interaction', async ({
     )
     await page.mouse.wheel(0, -850)
     await expect(map).not.toHaveClass(/map-wheel-zooming/, { timeout: 3_000 })
-    await record('zoom-map-in', 'map wheel', 'poem slip remained visible while map focused inward')
+    await record('zoom-map-in', 'map wheel', 'map zoomed inward around the geographic point under the cursor')
     await page.mouse.wheel(0, 850)
     await expect(map).not.toHaveClass(/map-wheel-zooming/, { timeout: 3_000 })
-    await record('zoom-map-out', 'map wheel', 'map returned toward the overview')
+    await record('zoom-map-out', 'map wheel', 'map zoomed outward around the same cursor anchor')
     await page.mouse.move(
       mapBounds.x + mapBounds.width / 2,
       mapBounds.y + mapBounds.height / 2,
